@@ -1,6 +1,7 @@
 from app.domain.exceptions import EmailDuplicadoError
 from app.domain.models.usuario import Usuario
 from app.domain.ports.authentication.password_hasher_port import PasswordHasherPort
+from app.domain.ports.rol.rol_command_port import RolCommandPort
 from app.domain.ports.usuario.usuario_command_port import UsuarioCommandPort
 from app.domain.services.normalizacion import normalizar_nombre_usuario
 from app.domain.services.validacion import (
@@ -12,24 +13,30 @@ from app.domain.services.validacion import (
 """
 UC2 — Registrar usuario
 Crea un usuario nuevo. Nunca almacena la contraseña en texto plano.
+El alta automáticamente asigna el rol por defecto USUARIO.
 """
 
 
 class RegistrarUsuarioUseCase:
     """
-    UC2 — Registra un usuario con su contraseña hasheada.
+    UC2 — Registra un usuario con su contraseña hasheada y el rol por defecto.
 
     Attributes:
         _repo : UsuarioCommandPort
+        _rol_repo : RolCommandPort
         _hasher : PasswordHasherPort
     """
+
+    ROL_POR_DEFECTO = "USUARIO"
 
     def __init__(
         self,
         repo: UsuarioCommandPort,
+        rol_repo: RolCommandPort,
         hasher: PasswordHasherPort,
     ) -> None:
         self._repo = repo
+        self._rol_repo = rol_repo
         self._hasher = hasher
 
     async def execute(self, datos: dict):
@@ -59,5 +66,9 @@ class RegistrarUsuarioUseCase:
             password_hash=password_hash,
             nombre_completo=datos.get("nombre_completo"),
         )
+
+        rol_por_defecto = await self._rol_repo.buscar_por_nombre(self.ROL_POR_DEFECTO)
+        if rol_por_defecto is not None:
+            usuario.ids_roles = [rol_por_defecto.id]
 
         return await self._repo.crear(usuario)

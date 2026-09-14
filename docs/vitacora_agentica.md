@@ -136,3 +136,50 @@
 **Estado resultante:** Pylance/mypy sin conflicto de anulación. Checklist en verde (`ruff`/`black`/`pytest` 34 passed, `alembic check` sin cambios de esquema). Commit `4fb4e7c`, tag `v1.0.1` pusheado.
 
 ---
+
+## 2026-09-14 — Recordatorio: arranque de Fase 5 (autorización por rol)
+
+**Qué se hizo:** se cerró la Fase 4 (merge `c0aaba8` de `feature/tests-integracion` a `develop`, pusheado) y se creó la rama `feature/autorizacion-roles` desde `develop` para comenzar la Fase 5. También se commiteó el fix de tipado (`b794a6b`, `fix(domain): corregir tipado de normalizacion y validacion de email`) con tag `v1.2.1` (patch post-tag `v1.2.0`).
+
+**Decisiones/acciones (pendientes que enmarcan la Fase 5):**
+- Entregables del plan (docs/plan_implementacion.md §Fase 5):
+  1. Definir, con el equipo, qué endpoints exigen qué roles (hoy solo `/roles/*` exige `ADMIN`).
+  2. Agregar `Depends(require_roles(...))` según lo decidido.
+  3. Test de autorización: 403 si el usuario no tiene el rol.
+- Las 6 decisiones del equipo que bloquean el arranque:
+  1. ¿`POST /usuarios/` público o requiere ADMIN? (hoy público)
+  2. ¿Qué roles hay además de ADMIN y USUARIO?
+  3. ¿`GET /usuarios/` y `GET /usuarios/{id}` requieren ser el mismo usuario o ADMIN?
+  4. ¿`DELETE /usuarios/{id}` requiere ser ADMIN?
+  5. ¿`POST /usuarios/{id}/roles` solo ADMIN? (hoy solo JWT)
+  6. ¿Refresh token o solo access token?
+- Recordatorio técnico ya anotado en `estado_actual_proyecto.md`: los roles viajan en el token JWT (stateless), por lo que asignar/quitar rol exige re-login para que se refleje en `/auth/me` y en la autorización.
+
+**Archivos/módulos tocados:** ninguno de código en esta entrada (solo este documento y `docs/estado_actual_proyecto.md`). Rama `feature/autorizacion-roles` creada sin commits todavía.
+
+**Estado resultante:** checklist en verde (unitarios 67/67, integración 5/5, `ruff`/`black` OK). `develop` = `c0aaba8` pusheado. Fase 5 en `feature/autorizacion-roles`, pendiente de definición de política de roles con el equipo; Fase 6 (cierre) queda después.
+
+---
+
+## 2026-09-14 — Fase 5 completada: autorización por rol con patrón híbrido (JWT corto + cache de estado)
+
+**Qué se hizo:** se implementó la Fase 5 (autorización por rol) en `feature/autorizacion-roles`, siguiendo las decisiones del equipo (matriz completa, UC10 quitar rol, autoasignación de USUARIO en el alta, y patrón híbrido JWT corto + cache de estado con TTL para revocación en caliente).
+
+**Decisiones/acciones:**
+- **Patrón híbrido**: access token JWT de vida corta (default `JWT_EXPIRATION_MINUTES` 60 → 15) + cache de estado por `user_id` (activo + roles) con TTL 60s. Nuevo port `EstadoUsuarioCachePort` (obtener/guardar/invalidar) y modelo de dominio `EstadoUsuario`; adapter `EstadoUsuarioCacheMemoria` con `cachetools.TTLCache` (`cachetools==6.0.0` agregado a `app/requirements.txt`). Config: `AUTH_CACHE_TTL_SEGUNDOS=60`, `AUTH_CACHE_MAX_ITEMS=1000`.
+- **`get_current_user` reescrito**: ya no confía en las claims del token; resuelve activo + roles desde cache (miss → BD vía `UsuarioQueryRepository.obtener_por_id` + `RolQueryRepository.obtener_nombres_por_ids`) y rechaza usuarios inactivos (401). Esto resuelve el pendiente histórico §7.5 y el stateless-bug §7.6 (revocación sin re-login).
+- **Matriz de roles aplicada** a `/usuarios/*`: listar → `require_roles("ADMIN")`; obtener/actualizar → nueva dependencia `require_mismo_usuario_o_admin` (ADMIN o el propio `id`); baja, asignar y quitar rol → ADMIN. `POST /usuarios/` queda público. `/roles/*` sigue ADMIN.
+- **UC2 autoasigna `USUARIO`**: el use case recibe `RolCommandPort`, resuelve el rol por nombre y `repo.crear` asocia los `RolORM` de `usuario.ids_roles`. Si el rol no existe, crea sin rol (no rompe el alta).
+- **UC10 quitar rol**: nuevo `uc10_quitar_rol.py` + método `quitar_rol` en `UsuarioCommandPort` y su repositorio (remueve de `orm.roles`) + endpoint `DELETE /usuarios/{id}/roles/{rol_id}` con `require_roles("ADMIN")`.
+- **Revocación en caliente**: UC6 (baja), UC9 (asignar) y UC10 (quitar) inyectan `EstadoUsuarioCachePort` e invalidan la entrada del usuario; el próximo request recarga desde BD. Verificado por integración sin re-login.
+- **Bootstrap de admin en tests de integración**: como las operaciones de rol exigen ADMIN y la limpieza borra `usuarios`, el conftest crea/recrea `admin@bootstrap.com` (rol ADMIN) en cada test (hash con bcrypt vía `build_hasher`).
+- `.env` local y `.env.example`: `JWT_EXPIRATION_MINUTES=15` + vars de cache.
+
+**Archivos/módulos tocados:**
+- Nuevos: `app/domain/models/estado_usuario.py`, `app/domain/ports/authentication/estado_usuario_cache_port.py`, `app/infrastructure/cache/` (`__init__.py`, `estado_usuario_cache_memoria.py`), `app/application/use_cases/uc10_quitar_rol.py`, `tests/unit/domian/services/test_uc10_quitar_rol.py`, `tests/integration/test_autorizacion_roles.py`.
+- Modificados: `app/infrastructure/dependencies/auth_dependencies.py` (get_current_user híbrido + require_mismo_usuario_o_admin), `dependency_injection.py` (cache singleton, UC2/UC6/UC9 con nuevos deps, UC10), `app/presentation/routers/usuarios.py` (matriz + endpoint UC10), `app/application/use_cases/uc2_registrar_usuario.py`, `uc6_dar_de_baja_usuario.py`, `uc9_asignar_rol.py`, `app/domain/ports/usuario/usuario_command_port.py` (quitar_rol), `app/infrastructure/database/repositories/usuario_command_repository.py` (crear con roles + quitar_rol), `app/infrastructure/core/config.py`, `app/requirements.txt`, `tests/unit/domian/services/test_uc2_registrar_usuario.py`, `test_uc6_dar_de_baja_usuario.py`, `test_uc9_asignar_rol.py`, `tests/integration/conftest.py`, `tests/integration/test_flujo_completo.py`, `.env`, `.env.example`.
+- Docs: `docs/estado_actual_proyecto.md`, `docs/plan_implementacion.md` (Fase 5 ✅ + decisiones resueltas).
+
+**Estado resultante:** Fase 5 cerrada en `feature/autorizacion-roles` (sin commitear todavía). Checklist en verde: `pytest` 75 unitarios + 13 integración contra BD real, `ruff` y `black` OK. Pendiente: Fase 6 (cierre: merge a develop + tag semver).
+
+---

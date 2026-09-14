@@ -11,6 +11,7 @@ class UsuarioCommandPort(ABC):
     UC5 — Actualizar usuario
     UC6 — Dar de baja usuario
     UC9 — Asignar rol
+    UC10 — Quitar rol
     """
 
     @abstractmethod
@@ -40,6 +41,14 @@ class UsuarioCommandPort(ABC):
     async def asignar_rol(self, usuario_id: int, rol_id: int) -> Usuario | None:
         """
         UC9 — Asigna un rol a un usuario.
+        Devuelve None si el usuario no existe.
+        """
+        ...
+
+    @abstractmethod
+    async def quitar_rol(self, usuario_id: int, rol_id: int) -> Usuario | None:
+        """
+        UC10 — Quita un rol a un usuario.
         Devuelve None si el usuario no existe.
         """
         ...

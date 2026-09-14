@@ -27,6 +27,20 @@ class FakeUsuarioCommandRepo:
         return usuario
 
 
+class FakeEstadoCache:
+    def __init__(self):
+        self.invalidados: list[int] = []
+
+    async def obtener(self, usuario_id: int):
+        return None
+
+    async def guardar(self, estado) -> None:
+        pass
+
+    async def invalidar(self, usuario_id: int) -> None:
+        self.invalidados.append(usuario_id)
+
+
 def run(coro):
     return asyncio.run(coro)
 
@@ -44,12 +58,21 @@ def usuario_activo() -> Usuario:
 class TestDarDeBajaUsuario:
 
     def test_baja_logica_marca_inactivo(self):
-        uc = DarDeBajaUsuarioUseCase(FakeUsuarioCommandRepo([usuario_activo()]))
+        uc = DarDeBajaUsuarioUseCase(
+            FakeUsuarioCommandRepo([usuario_activo()]), FakeEstadoCache()
+        )
         usuario = run(uc.execute(99))
 
         assert usuario.activo is False
 
+    def test_baja_invalida_estado_en_cache(self):
+        cache = FakeEstadoCache()
+        uc = DarDeBajaUsuarioUseCase(FakeUsuarioCommandRepo([usuario_activo()]), cache)
+        run(uc.execute(99))
+
+        assert cache.invalidados == [99]
+
     def test_usuario_inexistente_lanza(self):
-        uc = DarDeBajaUsuarioUseCase(FakeUsuarioCommandRepo([]))
+        uc = DarDeBajaUsuarioUseCase(FakeUsuarioCommandRepo([]), FakeEstadoCache())
         with pytest.raises(UsuarioNoEncontradoError):
             run(uc.execute(99))

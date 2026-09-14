@@ -48,6 +48,13 @@ class UsuarioCommandRepository(UsuarioCommandPort):
             nombre_completo=usuario.nombre_completo,
             activo=usuario.activo,
         )
+
+        if usuario.ids_roles:
+            resultado = await self._session.scalars(
+                select(RolORM).where(RolORM.id.in_(usuario.ids_roles))
+            )
+            orm.roles = list(resultado.all())
+
         self._session.add(orm)
         await self._session.flush()
         await _refresh_con_roles(self._session, orm)
@@ -84,6 +91,19 @@ class UsuarioCommandRepository(UsuarioCommandPort):
         rol_orm = await self._session.get(RolORM, rol_id)
         if rol_orm is not None and rol_orm not in orm.roles:
             orm.roles.append(rol_orm)
+
+        await self._session.flush()
+        await _refresh_con_roles(self._session, orm)
+        return _usuario_orm_a_entidad(orm)
+
+    async def quitar_rol(self, usuario_id: int, rol_id: int) -> Usuario | None:
+        orm = await self._session.get(UsuarioORM, usuario_id)
+        if orm is None:
+            return None
+
+        rol_orm = await self._session.get(RolORM, rol_id)
+        if rol_orm is not None and rol_orm in orm.roles:
+            orm.roles.remove(rol_orm)
 
         await self._session.flush()
         await _refresh_con_roles(self._session, orm)

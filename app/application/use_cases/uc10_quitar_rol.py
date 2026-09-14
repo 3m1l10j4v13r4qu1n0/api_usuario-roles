@@ -6,15 +6,15 @@ from app.domain.ports.rol.rol_command_port import RolCommandPort
 from app.domain.ports.usuario.usuario_command_port import UsuarioCommandPort
 
 """
-UC9 — Asignar rol
-Al asignar el rol se invalida el estado en cache para que el nuevo rol
-se refleje en la autorización sin esperar la expiración del JWT.
+UC10 — Quitar rol
+Al quitar el rol se invalida el estado en cache para revocar la
+autorización en caliente (sin esperar la expiración del JWT).
 """
 
 
-class AsignarRolUseCase:
+class QuitarRolUseCase:
     """
-    UC9 — Asigna un rol a un usuario.
+    UC10 — Quita un rol a un usuario.
 
     Attributes:
         _usuario_repo : UsuarioCommandPort
@@ -42,7 +42,7 @@ class AsignarRolUseCase:
         if rol is None:
             raise RolNoEncontradoError(f"No existe rol con id={rol_id}")
 
-        usuario = await self._usuario_repo.asignar_rol(usuario_id, rol_id)
+        usuario = await self._usuario_repo.quitar_rol(usuario_id, rol_id)
 
         if usuario is None:
             raise UsuarioNoEncontradoError(f"No existe usuario con id={usuario_id}")

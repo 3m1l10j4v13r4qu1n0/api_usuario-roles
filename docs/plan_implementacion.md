@@ -88,12 +88,18 @@ Crear la arquitectura base del microservicio reutilizando patrones de `api_norma
 
 ---
 
-## Fase 5 — Autorización por rol ⏳ pendiente
+## Fase 5 — Autorización por rol ✅ completada
 
 ### Entregables
-- [ ] Definir, con el equipo, qué endpoints exigen qué roles (hoy solo `/roles/*` exige ADMIN)
-- [ ] Agregar `Depends(require_roles(...))` según lo decidido
-- [ ] Test de autorización (403 si no tiene el rol)
+- [x] Definir, con el equipo, qué endpoints exigen qué roles
+- [x] Agregar `Depends(require_roles(...))` según lo decidido
+- [x] Test de autorización (403 si no tiene el rol)
+
+### Notas
+- **Matriz aplicada** (`app/presentation/routers/usuarios.py`): `GET /usuarios/` → ADMIN; `GET/PATCH /usuarios/{id}` → ADMIN o el propio usuario (`require_mismo_usuario_o_admin`); `DELETE /usuarios/{id}` → ADMIN; `POST /usuarios/{id}/roles` → ADMIN; nuevo `DELETE /usuarios/{id}/roles/{rol_id}` (UC10) → ADMIN. `POST /usuarios/` queda **público** y ahora **autoasigna el rol `USUARIO`**. `/roles/*` sigue exigiendo ADMIN.
+- **Patrón híbrido adoptado** (decisión del equipo): access token JWT corto (default `JWT_EXPIRATION_MINUTES=15`) + cache de estado por `user_id` (activo + roles, TTL 60s, `cachetools`) en `EstadoUsuarioCachePort`. `get_current_user` resuelve el estado real (cache → BD en miss) y verifica `activo`. UC6/UC9/UC10 invalidan el cache al cambiar roles/baja → **revocación en caliente sin re-login**.
+- Tests de integración: `tests/integration/test_autorizacion_roles.py` (403 por rol, ownership, revocación en caliente con asignar/quitar rol, usuario inactivo con token vivo → 401). El conftest bootstrapa `admin@bootstrap.com` con rol ADMIN porque las operaciones de rol exigen ADMIN.
+- `pytest` 75 unit + 13 integración, `ruff` y `black` en verde.
 
 ---
 
@@ -111,11 +117,11 @@ Crear la arquitectura base del microservicio reutilizando patrones de `api_norma
 
 | # | Pregunta | Estado |
 |---|---|---|
-| 1 | ¿`POST /usuarios/` debe ser público o requiere ADMIN? | Pendiente |
-| 2 | ¿Qué roles hay además de ADMIN y USUARIO? | Pendiente |
-| 3 | ¿`GET /usuarios/` y `GET /usuarios/{id}` requieren ser el mismo usuario o ADMIN? | Pendiente |
-| 4 | ¿`DELETE /usuarios/{id}` requiere ser ADMIN? | Pendiente |
-| 5 | ¿`POST /usuarios/{id}/roles` debe ser solo ADMIN? (hoy es público con JWT) | Pendiente |
-| 6 | ¿Se necesita refresh token o solo access token? | Pendiente |
+| 1 | ¿`POST /usuarios/` debe ser público o requiere ADMIN? | ✅ Público (decisión del equipo, revisitable) |
+| 2 | ¿Qué roles hay además de ADMIN y USUARIO? | ✅ Siguen ADMIN y USUARIO (USUARIO ahora se autoasigna en el alta) |
+| 3 | ¿`GET /usuarios/` y `GET /usuarios/{id}` requieren ser el mismo usuario o ADMIN? | ✅ Listar → ADMIN; obtener/actualizar → ADMIN o el propio usuario |
+| 4 | ¿`DELETE /usuarios/{id}` requiere ser ADMIN? | ✅ Sí |
+| 5 | ¿`POST /usuarios/{id}/roles` debe ser solo ADMIN? (hoy es público con JWT) | ✅ Sí (y se agregó `DELETE .../roles/{rol_id}`, UC10, solo ADMIN) |
+| 6 | ¿Se necesita refresh token o solo access token? | ⏳ Pendiente — hoy solo access token JWT corto (15 min) |
 
 Cada decisión actualiza este archivo y `docs/estado_actual_proyecto.md`.
