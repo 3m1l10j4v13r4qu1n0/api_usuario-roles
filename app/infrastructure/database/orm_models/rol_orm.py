@@ -1,4 +1,5 @@
 from sqlalchemy import Column, ForeignKey, Integer, String, Table
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infrastructure.database.connection import Base
 
@@ -16,7 +17,7 @@ class RolORM(Base):
     __tablename__ = "roles"
 
     # Clave primaria
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    nombre = Column(String(50), unique=True, nullable=False)
-    descripcion = Column(String(255), nullable=True)
+    nombre: Mapped[str] = mapped_column(String(50), unique=True)
+    descripcion: Mapped[str | None] = mapped_column(String(255))

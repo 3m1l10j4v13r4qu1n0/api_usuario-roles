@@ -1,36 +1,41 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, String
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
+from datetime import datetime
+from typing import ClassVar
+
+from sqlalchemy import String, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.connection import Base
+from app.infrastructure.database.orm_models.rol_orm import RolORM
 
 
 class UsuarioORM(Base):
 
     __tablename__ = "usuarios"
 
+    __mapper_args__: ClassVar[dict] = {"eager_defaults": True}
+
     # Clave primaria
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     # Datos de acceso
-    nombre_usuario = Column(String(50), unique=True, nullable=False)
-    email = Column(String(255), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
+    nombre_usuario: Mapped[str] = mapped_column(String(50), unique=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
 
     # Datos opcionales
-    nombre_completo = Column(String(255), nullable=True)
+    nombre_completo: Mapped[str | None] = mapped_column(String(255))
 
     # Baja lógica
-    activo = Column(Boolean, nullable=False, default=True, server_default="true")
+    activo: Mapped[bool] = mapped_column(default=True, server_default="true")
 
     # Marcas temporales — se gestionan automáticamente
-    fecha_creacion = Column(DateTime, server_default=func.now(), nullable=False)
-    fecha_actualizacion = Column(
-        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    fecha_creacion: Mapped[datetime] = mapped_column(server_default=func.now())
+    fecha_actualizacion: Mapped[datetime] = mapped_column(
+        server_default=func.now(), onupdate=func.now()
     )
 
     # Relación muchos-a-muchos con roles
-    roles = relationship(
+    roles: Mapped[list[RolORM]] = relationship(
         "RolORM",
         secondary="usuario_roles",
         lazy="selectin",
