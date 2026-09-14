@@ -101,6 +101,25 @@
 
 ---
 
+## 2026-09-14 — Fase 4: test de integración real contra BD
+
+**Qué se hizo:** se implementaron los tests de integración que recorren la API completa (routers + BD real PostgreSQL) con `TestClient` de FastAPI.
+
+**Decisiones/acciones:**
+- Nuevo directorio `tests/integration/` con `conftest.py` (cliente session, verificación de BD real con skip automático si no hay conexión, limpieza de estado por test) y `test_flujo_completo.py` (5 tests).
+- Se excluyen los tests de integración del `pytest` por defecto vía `addopts = "--ignore=tests/integration"` en `pyproject.toml` (`[tool.pytest.ini_options]`), con marker `integracion` registrado. Correr con `python -m pytest tests/integration/`.
+- **Gotcha de event loops resuelto:** `TestClient` corre la app en su propio event loop; usar el `engine` global de `connection.py` tanto dentro (`get_db`) como fuera (`asyncio.run` del ping/limpieza) provocaba `RuntimeError: Task got Future attached to a different loop`. Solución: el ping y la limpieza usan engines descartables (`create_async_engine`) que se crean y destruyen en cada `asyncio.run`, sin compartir conexiones con el loop del cliente.
+- **Idempotencia:** la limpieza posterior a cada test borra `usuario_roles`, `usuarios` y los roles no seed (preservando `ADMIN`/`USUARIO`), para que la corrida repetida no falle por roles residuales como `OPERADOR`.
+- Tests: flujo completo (registrar → login → `/auth/me` → asignar rol ADMIN id=1 → re-login con rol en token → listar roles → crear rol → listar), baja lógica que rechaza login (401), password incorrecta (401), email duplicado (409), endpoints protegidos sin token (401).
+
+**Archivos/módulos tocados:**
+- `tests/integration/__init__.py`, `tests/integration/conftest.py`, `tests/integration/test_flujo_completo.py` — nuevos
+- `pyproject.toml` — `[tool.pytest.ini_options]` con `addopts` y marker `integracion`
+
+**Estado resultante:** Fase 4 completa. Integración 5/5 en verde contra BD real (verificado con 3 corridas consecutivas), unitarios 67/67, `ruff` y `black` en verde. Pendiente: Fase 5 (autorización por rol, requiere decisiones del equipo) y Fase 6 (cierre).
+
+---
+
 ## 2026-09-14 — Fix post-tag v1.0.1: anotación de `__mapper_args__` en UsuarioORM
 
 **Qué se hizo:** por feedback de Pylance (`reportIncompatibleVariableOverride`), se corrigió la anotación de `__mapper_args__` en `usuario_orm.py`. El `ClassVar[dict]` anterior entraba en conflicto con la variable de instancia del mismo nombre declarada por `DeclarativeBase` (clase base de SQLAlchemy 2.0).
