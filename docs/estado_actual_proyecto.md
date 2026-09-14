@@ -63,11 +63,11 @@ Servicios de dominio puros: `validacion.py` (RN04 email, RN05 campos obligatorio
 - Seed de roles iniciales ejecutado contra BD real (`python -m app.infrastructure.database.seed_runner`) → roles `ADMIN` y `USUARIO` presentes (id 1 y 2). Re-ejecutar es idempotente (no inserta si la tabla tiene filas).
 - Fix de repositorios (SQLAlchemy async): queries usan `selectinload(UsuarioORM.roles)` y los comandos refrescan la relación + `UsuarioORM` usa `mapper_args = {"eager_defaults": True}` (recupera `fecha_actualizacion` por `RETURNING` y evita `MissingGreenlet`).
 - ORM models declarados con estilo SQLAlchemy 2.0 `Mapped` + `mapped_column` (evita falsos positivos de Pylance/mypy). La tabla asociativa `usuario_roles` se mantiene como `Table` de core.
-- Tests puros desacoplados de `DATABASE_URL` vía `tests/conftest.py`. `pytest`: 34 pasando, `ruff` y `black` en verde.
+- Tests puros desacoplados de `DATABASE_URL` vía `tests/conftest.py`. `pytest`: 67 pasando (34 dominio + 33 casos de uso UC2..UC9), `ruff` y `black` en verde.
 
 ## 7. Pendientes / TODO conocidos
 
-1. Escribir tests de los UCs 2..9 con fakes (hoy solo hay tests de dominio: normalización, validación, auth_service y UC1 login).
+1. ~~Escribir tests de los UCs 2..9 con fakes~~ ✅ (Fase 3 completada: `test_uc{2..9}_*.py` con factories).
 2. Probar el flujo completo real automatizado (Fase 4 del plan): registrar → login → asignar rol → listar → baja (ya probado manualmente, falta formalizarlo en test).
 3. Decidir roles de autorización por endpoint (hoy `/roles/*` exige `ADMIN`).
 4. Decidir si `POST /usuarios/` queda público o requiere ADMIN (pendiente de confirmar).

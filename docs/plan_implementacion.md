@@ -53,18 +53,23 @@ Crear la arquitectura base del microservicio reutilizando patrones de `api_norma
 
 ---
 
-## Fase 3 — Tests unitarios UC2..UC9 ⏳ pendiente
+## Fase 3 — Tests unitarios UC2..UC9 ✅ completada
 
 ### Entregables
-- [ ] `test_uc2_registrar_usuario.py` — test de creación exitosa + duplicado + datos inválidos
-- [ ] `test_uc3_listar_usuarios.py`
-- [ ] `test_uc4_obtener_usuario_por_id.py`
-- [ ] `test_uc5_actualizar_usuario.py` — test email duplicado + password nueva
-- [ ] `test_uc6_dar_de_baja_usuario.py`
-- [ ] `test_uc7_crear_rol.py` — test duplicado
-- [ ] `test_uc8_listar_roles.py`
-- [ ] `test_uc9_asignar_rol.py` — test usuario no existe + rol no existe
-- [ ] Verificar que `pytest` pasa todo desde la raíz
+- [x] `test_uc2_registrar_usuario.py` — test de creación exitosa + duplicado + datos inválidos
+- [x] `test_uc3_listar_usuarios.py`
+- [x] `test_uc4_obtener_usuario_por_id.py`
+- [x] `test_uc5_actualizar_usuario.py` — test email duplicado + password nueva
+- [x] `test_uc6_dar_de_baja_usuario.py`
+- [x] `test_uc7_crear_rol.py` — test duplicado
+- [x] `test_uc8_listar_roles.py`
+- [x] `test_uc9_asignar_rol.py` — test usuario no existe + rol no existe
+- [x] Verificar que `pytest` pasa todo desde la raíz (67 passed: 34 previos + 33 nuevos)
+
+### Notas
+- Fakes en memoria locales por archivo, siguiendo el patrón de `test_uc1_login.py`.
+- UC5 se testea con un stub que replica `model_dump(exclude_unset=True)`, aislando el dominio de Pydantic.
+- Los usuarios/roles usados en los tests se crean con factories (no singletons de módulo) para evitar contaminación entre tests por mutación.
 
 ---
 
