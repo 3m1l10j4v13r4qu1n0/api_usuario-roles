@@ -1,6 +1,6 @@
 """
-Tests del UC9 — Asignar rol a usuario
-Ubicación: tests/unit/domian/services/test_uc9_asignar_rol.py
+Tests del UC10 — Quitar rol a usuario
+Ubicación: tests/unit/domian/services/test_uc10_quitar_rol.py
 
 Usa fakes (en memoria) para aislar el caso de uso de la infraestructura.
 """
@@ -9,7 +9,7 @@ import asyncio
 
 import pytest
 
-from app.application.use_cases.uc9_asignar_rol import AsignarRolUseCase
+from app.application.use_cases.uc10_quitar_rol import QuitarRolUseCase
 from app.domain.exceptions import RolNoEncontradoError, UsuarioNoEncontradoError
 from app.domain.models.rol import Rol
 from app.domain.models.usuario import Usuario
@@ -19,12 +19,11 @@ class FakeUsuarioCommandRepo:
     def __init__(self, usuarios: list[Usuario]):
         self._usuarios = {u.id: u for u in usuarios}
 
-    async def asignar_rol(self, usuario_id: int, rol_id: int):
+    async def quitar_rol(self, usuario_id: int, rol_id: int):
         usuario = self._usuarios.get(usuario_id)
         if usuario is None:
             return None
-        if rol_id not in usuario.ids_roles:
-            usuario.ids_roles = list(usuario.ids_roles) + [rol_id]
+        usuario.ids_roles = [r for r in usuario.ids_roles if r != rol_id]
         return usuario
 
 
@@ -54,12 +53,13 @@ def run(coro):
     return asyncio.run(coro)
 
 
-def usuario_sin_roles() -> Usuario:
+def usuario_con_admin() -> Usuario:
     return Usuario(
         id=99,
         nombre_usuario="juan_perez",
         email="juan@test.com",
         password_hash="fake:clave1234",
+        ids_roles=[1, 2],
     )
 
 
@@ -67,30 +67,31 @@ ROL_ADMIN = Rol(id=1, nombre="ADMIN", descripcion="Administrador")
 
 
 @pytest.fixture
-def asignar_rol_uc():
-    repo_usuarios = FakeUsuarioCommandRepo([usuario_sin_roles()])
+def quitar_rol_uc():
+    repo_usuarios = FakeUsuarioCommandRepo([usuario_con_admin()])
     repo_roles = FakeRolCommandRepo([ROL_ADMIN])
     cache = FakeEstadoCache()
-    return AsignarRolUseCase(repo_usuarios, repo_roles, cache)
+    return QuitarRolUseCase(repo_usuarios, repo_roles, cache)
 
 
-class TestAsignarRol:
+class TestQuitarRol:
 
-    def test_asignacion_exitosa_agrega_rol_al_usuario(self, asignar_rol_uc):
-        usuario = run(asignar_rol_uc.execute(99, 1))
+    def test_quitar_rol_remueve_el_rol_del_usuario(self, quitar_rol_uc):
+        usuario = run(quitar_rol_uc.execute(99, 1))
 
         assert usuario.id == 99
-        assert 1 in usuario.ids_roles
+        assert 1 not in usuario.ids_roles
+        assert 2 in usuario.ids_roles
 
-    def test_asignacion_invalida_estado_en_cache(self, asignar_rol_uc):
-        run(asignar_rol_uc.execute(99, 1))
+    def test_quitar_rol_invalida_estado_en_cache(self, quitar_rol_uc):
+        run(quitar_rol_uc.execute(99, 1))
 
-        assert asignar_rol_uc._estado_cache.invalidados == [99]
+        assert quitar_rol_uc._estado_cache.invalidados == [99]
 
     def test_rol_inexistente_lanza(self):
-        repo_usuarios = FakeUsuarioCommandRepo([usuario_sin_roles()])
+        repo_usuarios = FakeUsuarioCommandRepo([usuario_con_admin()])
         repo_roles = FakeRolCommandRepo([])
-        uc = AsignarRolUseCase(repo_usuarios, repo_roles, FakeEstadoCache())
+        uc = QuitarRolUseCase(repo_usuarios, repo_roles, FakeEstadoCache())
 
         with pytest.raises(RolNoEncontradoError):
             run(uc.execute(99, 123))
@@ -98,7 +99,7 @@ class TestAsignarRol:
     def test_usuario_inexistente_lanza(self):
         repo_usuarios = FakeUsuarioCommandRepo([])
         repo_roles = FakeRolCommandRepo([ROL_ADMIN])
-        uc = AsignarRolUseCase(repo_usuarios, repo_roles, FakeEstadoCache())
+        uc = QuitarRolUseCase(repo_usuarios, repo_roles, FakeEstadoCache())
 
         with pytest.raises(UsuarioNoEncontradoError):
             run(uc.execute(999, 1))

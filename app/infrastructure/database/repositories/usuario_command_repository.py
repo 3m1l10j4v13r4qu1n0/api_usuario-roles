@@ -96,6 +96,19 @@ class UsuarioCommandRepository(UsuarioCommandPort):
         await _refresh_con_roles(self._session, orm)
         return _usuario_orm_a_entidad(orm)
 
+    async def quitar_rol(self, usuario_id: int, rol_id: int) -> Usuario | None:
+        orm = await self._session.get(UsuarioORM, usuario_id)
+        if orm is None:
+            return None
+
+        rol_orm = await self._session.get(RolORM, rol_id)
+        if rol_orm is not None and rol_orm in orm.roles:
+            orm.roles.remove(rol_orm)
+
+        await self._session.flush()
+        await _refresh_con_roles(self._session, orm)
+        return _usuario_orm_a_entidad(orm)
+
     async def buscar_por_email(self, email: str) -> Usuario | None:
         resultado = await self._session.execute(_query_con_roles_email(email))
         orm = resultado.scalar_one_or_none()
