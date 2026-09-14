@@ -40,8 +40,9 @@ def validar_password(password: str | None) -> None:
         raise DatoInvalidoError("La contraseña debe tener al menos 8 caracteres")
 
 
-def normalizar_y_validar_email(email: str | None) -> str | None:
+def normalizar_y_validar_email(email: str | None) -> str:
     """Normaliza (RN01) y valida (RN04) un email, devolviéndolo normalizado."""
     email_normalizado = normalizar_email(email)
     validar_email(email_normalizado)
+    assert email_normalizado is not None
     return email_normalizado

@@ -73,12 +73,18 @@ Crear la arquitectura base del microservicio reutilizando patrones de `api_norma
 
 ---
 
-## Fase 4 — Test de integración real ⏳ pendiente
+## Fase 4 — Test de integración real ✅ completada
 
 ### Entregables
-- [ ] Test de login completo contra BD real (flujos happy path + error)
-- [ ] Test de `POST /usuarios/` → `POST /auth/login` → `GET /auth/me` → `POST /usuarios/{id}/roles` → `GET /roles/`
-- [ ] Correr `ruff check .` y `black --check .` sin errores
+- [x] Test de login completo contra BD real (flujos happy path + error)
+- [x] Test de `POST /usuarios/` → `POST /auth/login` → `GET /auth/me` → `POST /usuarios/{id}/roles` → `GET /roles/`
+- [x] Correr `ruff check .` y `black --check .` sin errores
+
+### Notas
+- Se creó `tests/integration/` con el marcador `integracion`. Los tests se excluyen por defecto vía `addopts = "--ignore=tests/integration"` en `pyproject.toml`; correr con `python -m pytest tests/integration/`.
+- Usan `TestClient` de FastAPI contra la BD real del `.env`. El engine de la app solo vive dentro del loop del `TestClient`; el ping y la limpieza de estado usan engines descartables propios para evitar el error "Future attached to a different loop" (los event loops no se comparten).
+- La limpieza posterior a cada test borra `usuario_roles`, `usuarios` y los roles no seed (preserva `ADMIN`/`USUARIO`), garantizando tests idempotentes.
+- Se asume el seed corrido: el rol `ADMIN` tiene id 1 y se usa para las pruebas de autorización.
 
 ---
 

@@ -64,11 +64,12 @@ Servicios de dominio puros: `validacion.py` (RN04 email, RN05 campos obligatorio
 - Fix de repositorios (SQLAlchemy async): queries usan `selectinload(UsuarioORM.roles)` y los comandos refrescan la relación + `UsuarioORM` usa `mapper_args = {"eager_defaults": True}` (recupera `fecha_actualizacion` por `RETURNING` y evita `MissingGreenlet`).
 - ORM models declarados con estilo SQLAlchemy 2.0 `Mapped` + `mapped_column` (evita falsos positivos de Pylance/mypy). La tabla asociativa `usuario_roles` se mantiene como `Table` de core.
 - Tests puros desacoplados de `DATABASE_URL` vía `tests/conftest.py`. `pytest`: 67 pasando (34 dominio + 33 casos de uso UC2..UC9), `ruff` y `black` en verde.
+- Tests de integración en `tests/integration/` (marcador `integracion`, excluidos por defecto vía `addopts --ignore`): corren con `python -m pytest tests/integration/` contra la BD real del `.env`. 5/5 en verde (flujo completo + errores 401/409).
 
 ## 7. Pendientes / TODO conocidos
 
 1. ~~Escribir tests de los UCs 2..9 con fakes~~ ✅ (Fase 3 completada: `test_uc{2..9}_*.py` con factories).
-2. Probar el flujo completo real automatizado (Fase 4 del plan): registrar → login → asignar rol → listar → baja (ya probado manualmente, falta formalizarlo en test).
+2. ~~Test de integración real~~ ✅ (Fase 4 completada: `tests/integration/test_flujo_completo.py`, 5 tests contra BD real).
 3. Decidir roles de autorización por endpoint (hoy `/roles/*` exige `ADMIN`).
 4. Decidir si `POST /usuarios/` queda público o requiere ADMIN (pendiente de confirmar).
 5. Revisar si `get_current_user` debe también verificar `activo` del usuario (hoy lo hace el login, no la dependencia).

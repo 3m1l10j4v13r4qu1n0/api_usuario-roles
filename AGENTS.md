@@ -15,6 +15,7 @@ API REST de autenticación y autorización (usuarios + roles + JWT) en Python/Fa
   - `alembic revision --autogenerate -m "descripcion"`
   - `alembic upgrade head`
 - Tests unitarios (puros, sin BD): `pytest` desde la raíz. Sanity check: `python -m pytest tests/unit/domian/services -q`
+- Tests de integración contra BD real (requieren `.env` + Postgres levantada con seed): `python -m pytest tests/integration/` (se excluyen por defecto del `pytest` vía `addopts --ignore`)
 - Seed de datos iniciales (roles ADMIN y USUARIO): `python -m app.infrastructure.database.seed_runner`
 - Lint y formato antes de cada commit:
   - `venv/bin/ruff check .`
