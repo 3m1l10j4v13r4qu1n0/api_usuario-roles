@@ -203,3 +203,42 @@
 **Estado resultante:** Fase 6 completada. Checklist en verde (`ruff`/`black`/`pytest` 75 unitarios + 13 integración contra BD real). `develop` = `84a93b6` pusheado, tag `v1.3.0` pusheado. Pendiente futuro (no bloqueante): release de `develop` → `main`.
 
 ---
+
+## 2026-09-14 — Documentación completa por ingeniería inversa (formato Benn, uso educativo)
+
+**Qué se hizo:** se generó la documentación integral del proyecto **por ingeniería inversa desde el
+código ya implementado**, replicando el formato de `api_normalizacion_afiliados/docs/` (formato Benn
+backend-only con carpetas numeradas `01_..06_` + HUs). Trabajo realizado en la rama
+`feature/documentacion` (basada en `feature/fase-6-cierre`, que incluye el cierre documental de Fase 6).
+
+**Decisiones/acciones (definidas con el usuario):**
+- **Una HU por caso de uso** → `docs/04_historias_usuario/HU-01..HU-10` (5 archivos c/u: tarjeta,
+  `_api.md`, `_caso_uso_expandido.md`, `_modelos_datos.md`, `_pruebas.md`).
+- **Se usó `_pruebas.md`** (corregido), no el typo heredado `_pruevas.md` del repo de referencia.
+- **Diagramas PlantUML `.puml` + `.svg`**: 7 diagramas (arquitectura, casos de uso, clases, objetos,
+  ER, secuencia login UC1 y secuencia de autorización híbrida/revocación). El render se hizo con
+  `plantuml.jar` descargado a `/tmp/opencode` usando el **motor Smetana** (`!pragma layout smetana`)
+  porque la máquina no tiene Graphviz (`dot`). Los SVG quedaron con nombres snake_case
+  (`arquitectura_diagrama.svg`, `secuencia_login.svg`, etc.).
+- **Sin duplicados en la raíz** de `docs/` (a diferencia del repo de referencia, que duplica
+  `decisiones_tecnicas.md` y `diagramas/`): en este repo quedaron `01_global/..06_auditorias/`,
+  `02_tecnico/diagramas/` (canónico) y los 3 doc existentes en raíz (`estado_actual_proyecto.md`,
+  `plan_implementacion.md`, `vitacora_agentica.md`).
+- Se documentó la **HU-10 (quitar rol)** aunque no figuraba en AGENTS.md: el código ya la tiene
+  (UC10, Fase 5); quedó anotado en la auditoría.
+- `docs/02_tecnico/decisiones_tecnicas.md` describe el **patrón híbrido** (JWT corto + cache TTL,
+  revocación en caliente) como decisión clave del diseño.
+
+**Archivos/módulos tocados:** (solo `docs/`, sin código)
+- Nuevos: `01_global/` (vision, alcance, actores, reglas_negocio), `02_tecnico/` (decisiones_tecnicas,
+  modelo_datos_global + `diagramas/` con 7 `.puml` + 7 `.svg`), `03_procesos/definicion_listo.md`,
+  `04_historias_usuario/HU-01..HU-10/` (50 md), `05_metodologia_agil/metodoKanban.md`,
+  `06_auditorias/auditoria-historias-usuario.md`.
+- Modificados: `docs/estado_actual_proyecto.md` (nueva §9 Documentación).
+
+**Estado resultante:** proyecto totalmente documentado para uso educativo/explicativo. Checklist
+en verde (`ruff`/`black`/`pytest` 75 unitarios + 13 integración). Commits atómicos por lote en
+`feature/documentacion`. Pendiente: revisión del usuario y, si aprueba, integración a `develop`
+(merge + tag, requiere OK explícito).
+
+---
