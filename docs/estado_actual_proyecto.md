@@ -1,6 +1,6 @@
 # Estado Actual del Proyecto
 
-> Última actualización: 2026-09-11
+> Última actualización: 2026-09-14
 > Este archivo es una FOTO del presente, no un historial. Para el historial de cambios ver `vitacora_agentica.md`.
 > El agente debe leer este archivo completo al iniciar cualquier tarea sobre el proyecto.
 
@@ -42,36 +42,37 @@ Servicios de dominio puros: `validacion.py` (RN04 email, RN05 campos obligatorio
 
 | Método | Ruta | Descripción | Estado |
 |---|---|---|---|
-| POST | `/auth/login` | Autentica y devuelve token JWT (UC1) | ✅ código listo, sin BD aún |
-| GET | `/auth/me` | Usuario autenticado desde el token | ✅ código listo, sin BD aún |
-| POST | `/usuarios/` | Registrar usuario (UC2) — público | ✅ código listo, sin BD aún |
-| GET | `/usuarios/` | Listar usuarios (UC3) — JWT | ✅ código listo, sin BD aún |
-| GET | `/usuarios/{usuario_id}` | Obtener usuario (UC4) — JWT | ✅ código listo, sin BD aún |
-| PATCH | `/usuarios/{usuario_id}` | Actualizar usuario (UC5) — JWT | ✅ código listo, sin BD aún |
-| DELETE | `/usuarios/{usuario_id}` | Baja lógica (UC6) — JWT | ✅ código listo, sin BD aún |
-| POST | `/usuarios/{usuario_id}/roles` | Asignar rol (UC9) — JWT | ✅ código listo, sin BD aún |
-| POST | `/roles/` | Crear rol (UC7) — JWT + ADMIN | ✅ código listo, sin BD aún |
-| GET | `/roles/` | Listar roles (UC8) — JWT + ADMIN | ✅ código listo, sin BD aún |
+| POST | `/auth/login` | Autentica y devuelve token JWT (UC1) | ✅ funcionando contra BD real |
+| GET | `/auth/me` | Usuario autenticado desde el token | ✅ funcionando contra BD real |
+| POST | `/usuarios/` | Registrar usuario (UC2) — público | ✅ funcionando contra BD real |
+| GET | `/usuarios/` | Listar usuarios (UC3) — JWT | ✅ funcionando contra BD real |
+| GET | `/usuarios/{usuario_id}` | Obtener usuario (UC4) — JWT | ✅ funcionando contra BD real |
+| PATCH | `/usuarios/{usuario_id}` | Actualizar usuario (UC5) — JWT | ✅ funcionando contra BD real |
+| DELETE | `/usuarios/{usuario_id}` | Baja lógica (UC6) — JWT | ✅ funcionando contra BD real |
+| POST | `/usuarios/{usuario_id}/roles` | Asignar rol (UC9) — JWT (cuerpo: `{"id_rol": N}`) | ✅ funcionando contra BD real |
+| POST | `/roles/` | Crear rol (UC7) — JWT + ADMIN | ✅ funcionando contra BD real |
+| GET | `/roles/` | Listar roles (UC8) — JWT + ADMIN | ✅ funcionando contra BD real |
 | GET | `/` | Health check | ✅ |
 
 ## 6. Infraestructura / Integraciones
 
-- PostgreSQL async (`DATABASE_URL`, var obligatoria). **Alembic inicializado pero SIN migración inicial todavía** → falta `alembic revision --autogenerate` para `usuarios`, `roles`, `usuario_roles`.
+- PostgreSQL async (`DATABASE_URL`, var obligatoria). **Alembic con migración inicial aplicada** (`9378f376749f_crear_tablas_usuarios_roles`) → tablas `usuarios`, `roles`, `usuario_roles` creadas en BD real `auth_db`.
 - Seguridad: `bcrypt==4.3.0` (`app/infrastructure/auth/password_hasher.py`), `PyJWT==2.10.1` (`app/infrastructure/auth/jwt_token_provider.py`). Variables `JWT_SECRET_KEY` (obligatoria), `JWT_ALGORITHM` (HS256), `JWT_EXPIRATION_MINUTES` (60).
 - CORS configurado con `CORS_ORIGINS` (default localhost:5173/3000).
 - `requirements.txt` en `app/requirements.txt` (no en la raíz).
-- Seed de roles iniciales: `python -m app.infrastructure.database.seed_runner` (crea ADMIN y USUARIO si la tabla está vacía).
-- Tests puros desacoplados de `DATABASE_URL` vía `tests/conftest.py`.
+- Seed de roles iniciales ejecutado contra BD real (`python -m app.infrastructure.database.seed_runner`) → roles `ADMIN` y `USUARIO` presentes (id 1 y 2). Re-ejecutar es idempotente (no inserta si la tabla tiene filas).
+- Fix de repositorios (SQLAlchemy async): queries usan `selectinload(UsuarioORM.roles)` y los comandos refrescan la relación + `UsuarioORM` usa `mapper_args = {"eager_defaults": True}` (recupera `fecha_actualizacion` por `RETURNING` y evita `MissingGreenlet`).
+- ORM models declarados con estilo SQLAlchemy 2.0 `Mapped` + `mapped_column` (evita falsos positivos de Pylance/mypy). La tabla asociativa `usuario_roles` se mantiene como `Table` de core.
+- Tests puros desacoplados de `DATABASE_URL` vía `tests/conftest.py`. `pytest`: 34 pasando, `ruff` y `black` en verde.
 
 ## 7. Pendientes / TODO conocidos
 
-1. Crear migración inicial de Alembic y correr `alembic upgrade head` contra una BD PostgreSQL real.
-2. Correr el seed de roles (`seed_runner`).
-3. Escribir tests de los UCs 2..9 con fakes (hoy solo hay tests de dominio: normalización, validación, auth_service y UC1 login).
-4. Probar el flujo completo real: registrar → login → asignar rol → listar → baja.
-5. Decidir roles de autorización por endpoint (hoy `/roles/*` exige `ADMIN`).
-6. Decidir si `POST /usuarios/` queda público o requiere ADMIN (pendiente de confirmar).
-7. Revisar si `get_current_user` debe también verificar `activo` del usuario (hoy lo hace el login, no la dependencia).
+1. Escribir tests de los UCs 2..9 con fakes (hoy solo hay tests de dominio: normalización, validación, auth_service y UC1 login).
+2. Probar el flujo completo real automatizado (Fase 4 del plan): registrar → login → asignar rol → listar → baja (ya probado manualmente, falta formalizarlo en test).
+3. Decidir roles de autorización por endpoint (hoy `/roles/*` exige `ADMIN`).
+4. Decidir si `POST /usuarios/` queda público o requiere ADMIN (pendiente de confirmar).
+5. Revisar si `get_current_user` debe también verificar `activo` del usuario (hoy lo hace el login, no la dependencia).
+6. Observado en prueba: los roles del token JWT se fijan al momento del login (stateless); asignar/quitar rol requiere re-login para que se refleje en `/auth/me` y en la autorización.
 
 ## 8. Decisiones y convenciones vigentes
 
