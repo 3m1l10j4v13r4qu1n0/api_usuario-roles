@@ -36,16 +36,20 @@ Crear la arquitectura base del microservicio reutilizando patrones de `api_norma
 
 ---
 
-## Fase 2 — Base de datos real ⏳ pendiente
+## Fase 2 — Base de datos real ✅ completada
 
 ### Entregables
-- [ ] Instalar venv: `python -m venv venv && . venv/bin/activate && pip install -r app/requirements.txt`
-- [ ] Configurar `.env` con `DATABASE_URL` real y `JWT_SECRET_KEY` segura
-- [ ] Correr `alembic revision --autogenerate -m "crear_tablas_usuarios_roles"`
-- [ ] Revisar la migración generada (verificar tipos: `String(255)` para email/hash, `Boolean` para activo, `DateTime` para timestamps, PK compuesta de `usuario_roles`)
-- [ ] Correr `alembic upgrade head`
-- [ ] Correr `python -m app.infrastructure.database.seed_runner` → debe insertar ADMIN y USUARIO
-- [ ] Probar manual: `GET /` → health check, `POST /usuarios/` → crear usuario, `POST /auth/login` → obtener token
+- [x] Instalar venv: `python -m venv venv && . venv/bin/activate && pip install -r app/requirements.txt`
+- [x] Configurar `.env` con `DATABASE_URL` real y `JWT_SECRET_KEY` segura
+- [x] Correr `alembic revision --autogenerate -m "crear_tablas_usuarios_roles"`
+- [x] Revisar la migración generada (verificar tipos: `String(255)` para email/hash, `Boolean` para activo, `DateTime` para timestamps, PK compuesta de `usuario_roles`)
+- [x] Correr `alembic upgrade head`
+- [x] Correr `python -m app.infrastructure.database.seed_runner` → debe insertar ADMIN y USUARIO
+- [x] Probar manual: `GET /` → health check, `POST /usuarios/` → crear usuario, `POST /auth/login` → obtener token
+
+### Notas
+- Durante la prueba manual se encontró y corrigió un bug de repositorios async: `MissingGreenlet` al acceder a `orm.roles` y a defaults del servidor tras `flush`. Fix: `selectinload` explícito en queries, refresh de relaciones tras comandos y `eager_defaults=True` en `UsuarioORM`.
+- El flujo real completo (crear → login → asignar rol ADMIN → re-login → listar roles → crear rol → baja lógica → login rechazado de usuario inactivo → email duplicado 409) quedó verificado manualmente contra BD real.
 
 ---
 
