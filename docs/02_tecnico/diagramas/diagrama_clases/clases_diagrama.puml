@@ -1,0 +1,158 @@
+@startuml Diagrama de Clases
+!pragma layout smetana
+title Clases - Dominio, Ports y Adapters de la API de Usuarios y Roles
+
+skinparam classAttributeIconSize 0
+
+package "Dominio - Entidades" {
+  class Usuario {
+    nombre_usuario : str
+    email : str
+    password_hash : str
+    nombre_completo : str | None
+    activo : bool
+    fecha_creacion : datetime | None
+    fecha_actualizacion : datetime | None
+    id : int | None
+    ids_roles : list[int]
+  }
+
+  class Rol {
+    nombre : str
+    descripcion : str | None
+    id : int | None
+  }
+
+  class EstadoUsuario {
+    usuario_id : int
+    email : str
+    nombre_usuario : str
+    activo : bool
+    roles : list[str]
+  }
+}
+
+package "Dominio - Servicios" {
+  class normalizacion {
+    {static} normalizar_email(valor: str | None) : str | None
+    {static} normalizar_texto(valor: str | None) : str | None
+    {static} normalizar_nombre_usuario(valor: str | None) : str | None
+  }
+
+  class validacion {
+    {static} validar_email(email: str | None)
+    {static} validar_nombre_usuario(nombre: str | None)
+    {static} validar_password(password: str | None)
+    {static} normalizar_y_validar_email(email: str | None) : str
+  }
+
+  class auth_service {
+    {static} verificar_credenciales(usuario, password, hasher) : Usuario
+    {static} autorizar(roles_usuario: list, roles_requeridos: list)
+  }
+}
+
+package "Dominio - Ports (ABC)" {
+  abstract class UsuarioQueryPort {
+    {abstract} listar()
+    {abstract} obtener_por_id(usuario_id: int)
+    {abstract} obtener_por_email(email: str)
+  }
+
+  abstract class UsuarioCommandPort {
+    {abstract} crear(usuario: Usuario)
+    {abstract} actualizar(usuario_id: int, campos: dict)
+    {abstract} dar_de_baja(usuario_id: int)
+    {abstract} asignar_rol(usuario_id: int, rol_id: int)
+    {abstract} quitar_rol(usuario_id: int, rol_id: int)
+    {abstract} buscar_por_email(email: str)
+    {abstract} buscar_por_email_excluyendo_id(email: str, usuario_id: int)
+  }
+
+  abstract class RolQueryPort {
+    {abstract} listar()
+    {abstract} obtener_nombres_por_ids(ids: list[int])
+  }
+
+  abstract class RolCommandPort {
+    {abstract} crear(rol: Rol)
+    {abstract} buscar_por_id(rol_id: int)
+    {abstract} buscar_por_nombre(nombre: str)
+  }
+
+  abstract class PasswordHasherPort {
+    {abstract} hash_password(password: str) : str
+    {abstract} verify_password(password: str, hash: str) : bool
+  }
+
+  abstract class TokenProviderPort {
+    {abstract} crear_token(usuario_id: int, roles: list[str]) : str
+    {abstract} decodificar_token(token: str) : dict
+  }
+
+  abstract class EstadoUsuarioCachePort {
+    {abstract} obtener(usuario_id: int) : EstadoUsuario | None
+    {abstract} guardar(estado: EstadoUsuario)
+    {abstract} invalidar(usuario_id: int)
+  }
+}
+
+package "Infraestructura - Adapters" {
+  class UsuarioQueryRepository {
+    listar()
+    obtener_por_id(usuario_id: int)
+    obtener_por_email(email: str)
+  }
+
+  class UsuarioCommandRepository {
+    crear(usuario: Usuario)
+    actualizar(usuario_id: int, campos: dict)
+    dar_de_baja(usuario_id: int)
+    asignar_rol(usuario_id: int, rol_id: int)
+    quitar_rol(usuario_id: int, rol_id: int)
+  }
+
+  class RolQueryRepository {
+    listar()
+    obtener_nombres_por_ids(ids: list[int])
+  }
+
+  class RolCommandRepository {
+    crear(rol: Rol)
+    buscar_por_id(rol_id: int)
+    buscar_por_nombre(nombre: str)
+  }
+
+  class BcryptPasswordHasher {
+    hash_password(password: str) : str
+    verify_password(password: str, hash: str) : bool
+  }
+
+  class JwtTokenProvider {
+    crear_token(usuario_id: int, roles: list[str]) : str
+    decodificar_token(token: str) : dict
+  }
+
+  class EstadoUsuarioCacheMemoria {
+    - cache : TTLCache
+    obtener(usuario_id: int) : EstadoUsuario | None
+    guardar(estado: EstadoUsuario)
+    invalidar(usuario_id: int)
+  }
+}
+
+UsuarioQueryRepository ..|> UsuarioQueryPort : implementa
+UsuarioCommandRepository ..|> UsuarioCommandPort : implementa
+RolQueryRepository ..|> RolQueryPort : implementa
+RolCommandRepository ..|> RolCommandPort : implementa
+BcryptPasswordHasher ..|> PasswordHasherPort : implementa
+JwtTokenProvider ..|> TokenProviderPort : implementa
+EstadoUsuarioCacheMemoria ..|> EstadoUsuarioCachePort : implementa
+
+Usuario "1" -- "*" Rol : usuario_roles (M2M) via ids_roles
+Usuario ..> EstadoUsuario : se cachea su estado
+
+auth_service ..> PasswordHasherPort : usa
+validacion ..> normalizacion : usa
+
+@enduml

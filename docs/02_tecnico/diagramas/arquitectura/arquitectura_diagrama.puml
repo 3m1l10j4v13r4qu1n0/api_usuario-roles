@@ -1,0 +1,53 @@
+@startuml Diagrama de Arquitectura
+!pragma layout smetana
+title Arquitectura - API de Usuarios y Roles (Clean Architecture + Hexagonal)
+
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+package "Cliente externo" {
+  [Frontend / Microservicio\nAuthorization: Bearer <token>] as CLIENTE
+}
+
+package "Presentacion" {
+  [Routers FastAPI\nauth.py / usuarios.py / roles.py] as ROUTERS
+  [Schemas Pydantic] as SCHEMAS
+  [handlers.py\n(excepcion dominio -> HTTP)] as HANDLERS
+}
+
+package "Aplicacion" {
+  [Casos de uso\nuc1_login ... uc10_quitar_rol] as UC
+}
+
+package "Dominio (Core puro)" {
+  [Entidades\nUsuario / Rol / EstadoUsuario] as ENTIDADES
+  [Servicios\nnormalizacion / validacion / auth_service] as SERVICIOS
+  [Ports (contratos ABC)\nUsuarioPort / RolPort / PasswordHasher /\nTokenProvider / EstadoUsuarioCache] as PORTS
+  [exceptions.py] as EXC
+}
+
+package "Infraestructura (adapters)" {
+  [Repositorios SQLAlchemy\nUsuarioQuery/Command - RolQuery/Command] as REPOS
+  [BcryptPasswordHasher] as HASHER
+  [JwtTokenProvider (PyJWT)] as JWT
+  [EstadoUsuarioCacheMemoria\n(cachetools TTLCache)] as CACHE
+  [dependency_injection.py\nauth_dependencies.py] as DI
+}
+
+database "PostgreSQL\nauth_db" as DB
+
+CLIENTE -right-> ROUTERS : HTTP
+ROUTERS --> SCHEMAS
+ROUTERS --> DI : Depends
+DI --> UC
+UC --> ENTIDADES
+UC --> SERVICIOS
+UC ..> PORTS : depende de contratos
+PORTS ..> REPOS : implementado por
+PORTS ..> HASHER
+PORTS ..> JWT
+PORTS ..> CACHE
+REPOS --> DB : SQLAlchemy async
+ROUTERS --> HANDLERS : excepciones
+
+@enduml

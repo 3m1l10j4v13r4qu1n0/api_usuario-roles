@@ -1,0 +1,45 @@
+@startuml Diagrama Entidad-Relacion
+!pragma layout smetana
+title Modelo de Datos - usuarios, roles y usuario_roles
+
+hide circle
+skinparam linetype ortho
+
+entity "usuarios" as U {
+  * id : int <<PK>>
+  --
+  * nombre_usuario : varchar(50) <<UNIQUE>>
+  * email : varchar(255) <<UNIQUE>>
+  * password_hash : varchar(255)
+  o nombre_completo : varchar(255)
+  * activo : boolean
+  * fecha_creacion : datetime
+  * fecha_actualizacion : datetime
+}
+
+entity "roles" as R {
+  * id : int <<PK>>
+  --
+  * nombre : varchar(50) <<UNIQUE>>
+  o descripcion : varchar(255)
+}
+
+entity "usuario_roles" as UR {
+  * usuario_id : int <<PK, FK>>
+  * rol_id : int <<PK, FK>>
+}
+
+U ||--o{ UR : "tiene"
+R ||--o{ UR : "pertenece a"
+
+note right of U
+  Baja logica: activo = false
+  (nunca se borra fisicamente)
+end note
+
+note right of R
+  Seed: ADMIN (id=1), USUARIO (id=2)
+  Usuario se autoasigna USUARIO en el alta
+end note
+
+@enduml

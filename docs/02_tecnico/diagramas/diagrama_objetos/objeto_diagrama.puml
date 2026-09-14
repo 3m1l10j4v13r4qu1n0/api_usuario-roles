@@ -1,0 +1,52 @@
+@startuml Diagrama de Objetos
+!pragma layout smetana
+title Objeto - Escenario: login y autorizacion de un usuario USUARIO con cache
+
+skinparam objectAttributeStyle bold
+
+object "usuario : Usuario" as U {
+  id = 7
+  nombre_usuario = "juanperez"
+  email = "juan.perez@example.com"
+  password_hash = "$2b$12$..."
+  nombre_completo = "Juan Perez"
+  activo = true
+  ids_roles = [2]
+}
+
+object "rol : Rol" as R {
+  id = 2
+  nombre = "USUARIO"
+  descripcion = "Acceso basico al sistema"
+}
+
+object "token : TokenProviderResult" as T {
+  sub = "7"
+  roles = ["USUARIO"]
+  iat = 2026-09-14 17:00
+  exp = 2026-09-14 17:15
+}
+
+object "estado : EstadoUsuario" as E {
+  usuario_id = 7
+  email = "juan.perez@example.com"
+  nombre_usuario = "juanperez"
+  activo = true
+  roles = ["USUARIO"]
+}
+
+object "cache : EstadoUsuarioCacheMemoria" as C {
+  entries = { 7: EstadoUsuario... }
+  ttl = 60 seg
+}
+
+U --> R : usuario_roles (rol 2)
+U ..> E : construido al resolver estado
+T ..> E : el token NO es fuente de verdad de roles
+
+note right of C
+  get_current_user: cache miss -> BD -> guardar.
+  Si se baja/alta/remueve rol se invalida la entry.
+end note
+
+@enduml

@@ -1,0 +1,49 @@
+@startuml Diagrama de Secuencia - Autorizacion hibrida y revocacion en caliente
+title Patron hibrido: get_current_user (cache/BD) + revocacion al cambiar rol
+
+actor Cliente as C
+
+participant "Router usuarios" as R
+participant "get_current_user" as GU
+participant "EstadoUsuarioCacheMemoria" as CACHE
+participant "UsuarioQueryRepository" as UREPO
+participant "RolQueryRepository" as RREPO
+participant "require_roles(ADMIN)" as RR
+participant "QuitarRolUseCase" as UC10
+
+== Request normal: cache hit ==
+
+C -> R : GET /usuarios {Authorization: Bearer TOKEN}
+R -> GU : credentials
+GU -> GU : decodificar_token (identidad: sub=7)
+GU -> CACHE : obtener(7)
+CACHE --> GU : EstadoUsuario(activo=true, roles=[USUARIO, ADMIN])
+GU -> RR : {id:7, roles:[USUARIO,ADMIN]}
+RR -> R : permite (tiene ADMIN)
+R --> C : 200 listado
+
+== Cambio de rol: se invalida cache ==
+
+C -> R : DELETE /usuarios/7/roles/2 {Authorization: Bearer TOKEN(ADMIN)}
+R -> UC10 : execute(usuario_id=7, rol_id=2)
+UC10 -> UC10 : verifica rol y usuario existentes
+UC10 -> CACHE : invalidar(7)
+UC10 --> C : 200 Usuario sin rol USUARIO
+
+== Request normal: cache miss -> BD ==
+
+C -> R : GET /usuarios {Authorization: Bearer TOKEN}
+R -> GU : credentials
+GU -> GU : decodificar_token (sub=7)
+GU -> CACHE : obtener(7)
+CACHE --> GU : None (miss)
+GU -> UREPO : obtener_por_id(7)
+UREPO --> GU : Usuario (activo, roles=[ADMIN])
+GU -> RREPO : obtener_nombres_por_ids([1])
+RREPO --> GU : ["ADMIN"]
+GU -> CACHE : guardar(EstadoUsuario(7, activo=true, roles=["ADMIN"]))
+GU -> RR : {id:7, roles:["ADMIN"]}
+RR -> R : permite
+R --> C : 200 (visibilidad actualizada sin re-login)
+
+@enduml

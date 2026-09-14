@@ -1,0 +1,29 @@
+@startuml Diagrama de Secuencia UC1 - Login
+title Login (UC1) - POST /auth/login
+
+actor Cliente as C
+
+participant "Router auth" as R
+participant "LoginUseCase" as UC
+participant "UsuarioQueryRepository" as UREPO
+participant "RolQueryRepository" as RREPO
+participant "BcryptPasswordHasher" as H
+participant "JwtTokenProvider" as J
+
+C -> R : POST /auth/login {email, password}
+R -> UC : execute(email, password)
+UC -> UC : normalizar_email (RN01)
+UC -> UREPO : obtener_por_email(email)
+UREPO --> UC : Usuario | None
+alt usuario inexistente o inactivo o password incorrecta
+  UC -> UC : verificar_credenciales() lanza
+  UC --> C : 401 CredencialesInvalidasError
+else credenciales validas
+  UC -> RREPO : obtener_nombres_por_ids(ids_roles)
+  RREPO --> UC : ["USUARIO"]
+  UC -> J : crear_token(id, roles)
+  J --> UC : access_token
+  UC --> C : 200 {access_token, token_type, id, email, nombre_usuario, roles}
+end
+
+@enduml
