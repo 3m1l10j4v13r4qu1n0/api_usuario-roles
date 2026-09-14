@@ -17,7 +17,11 @@ class Settings(BaseSettings):
     # JWT
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRATION_MINUTES: int = 60
+    JWT_EXPIRATION_MINUTES: int = 15
+
+    # Cache de estado del usuario autenticado (patrón híbrido)
+    AUTH_CACHE_TTL_SEGUNDOS: int = 60
+    AUTH_CACHE_MAX_ITEMS: int = 1000
 
     class Config:
         env_file = ".env"  # ← lee del archivo .env
