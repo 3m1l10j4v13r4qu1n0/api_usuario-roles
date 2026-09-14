@@ -68,6 +68,14 @@ Servicios de dominio puros: `validacion.py` (RN04 email, RN05 campos obligatorio
 
 ## 7. Pendientes / TODO conocidos
 
+🔄 **En curso — Fase 5 (autorización por rol) en `feature/autorizacion-roles`.** Entregables: definir qué endpoints exigen qué roles, agregar `Depends(require_roles(...))` y testear 403 si falta el rol (docs/plan_implementacion.md §Fase 5). Decisiones pendientes del equipo que bloquean el arranque:
+> 1. ¿`POST /usuarios/` público o requiere ADMIN? (hoy público)
+> 2. ¿Qué roles hay además de `ADMIN` y `USUARIO`?
+> 3. ¿`GET /usuarios/` y `GET /usuarios/{id}` requieren ser el mismo usuario o ADMIN?
+> 4. ¿`DELETE /usuarios/{id}` requiere ser ADMIN?
+> 5. ¿`POST /usuarios/{id}/roles` solo ADMIN? (hoy solo JWT)
+> 6. ¿Refresh token o solo access token?
+
 1. ~~Escribir tests de los UCs 2..9 con fakes~~ ✅ (Fase 3 completada: `test_uc{2..9}_*.py` con factories).
 2. ~~Test de integración real~~ ✅ (Fase 4 completada: `tests/integration/test_flujo_completo.py`, 5 tests contra BD real).
 3. Decidir roles de autorización por endpoint (hoy `/roles/*` exige `ADMIN`).
