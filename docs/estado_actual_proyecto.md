@@ -82,6 +82,7 @@ Servicios de dominio puros: `validacion.py` (RN04 email, RN05 campos obligatorio
 4. ~~Observado: roles fijos hasta re-login~~ ✅ resuelto por el patrón híbrido: asignar/quitar rol o dar de baja invalidan el cache y el cambio se refleja en el próximo request sin re-login.
 5. Si se escala horizontalmente, el cache in-memory debe reemplazarse por Redis (el port `EstadoUsuarioCachePort` soporta el cambio).
 6. Refresh token: hoy solo access token JWT (corto, 15 min). Decidir si hace falta en una fase futura.
+7. **Release a `main`** pendiente: `main` quedó atrasado respecto de `develop`. La Fase 6 se cerró de forma **documental** (sin release). Se creó la rama `feature/fase-6-cierre` desde `develop` (reutilizable) para cuando se decida mergear o hacer release.
 
 ## 8. Decisiones y convenciones vigentes
 

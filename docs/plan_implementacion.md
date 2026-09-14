@@ -103,13 +103,18 @@ Crear la arquitectura base del microservicio reutilizando patrones de `api_norma
 
 ---
 
-## Fase 6 — Cierre ⏳ pendiente
+## Fase 6 — Cierre ✅ completada (cierre documental)
 
 ### Entregables
-- [ ] Tag `v1.0.0` (o `v1.x.0` según se hay hecho correcciones)
-- [ ] Actualizar `docs/estado_actual_proyecto.md`
-- [ ] Verificar que todos los tests pasan
-- [ ] Merge a develop (si se trabajó en feature branch)
+- [x] Tag `v1.0.0` (o `v1.x.0` según se hay hecho correcciones) — cierre de fases: `v1.0.0`…`v1.3.0` (última fase cerrada con tag `v1.3.0`, pusheado)
+- [x] Actualizar `docs/estado_actual_proyecto.md`
+- [x] Verificar que todos los tests pasan — 75 unit + 13 integración contra BD real
+- [x] Merge a develop (si se trabajó en feature branch) — `84a93b6` (merge de `feature/autorizacion-roles`), pusheado
+
+### Notas
+- Cierre **documental** (decisión del usuario): no se generó tag extra de cierre ni release a `main`. `main` quedó atrasado respecto de `develop`, pendiente (no es bloqueante; el microservicio está completo y verificado en `develop`).
+- Operaciones git del cierre: merge `feature/autorizacion-roles` → `develop` (`84a93b6`), tag `v1.3.0`, push de `develop` y del tag, y limpieza de ramas ya mergeadas (locales + remotas; quedó `origin/feature/docs-readme` porque es la rama default de GitHub).
+- Rama de ambientes: se creó `feature/fase-6-cierre` desde `develop` para el cierre; puede reusarse o descartarse para próximas fases.
 
 ---
 

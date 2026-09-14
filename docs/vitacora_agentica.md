@@ -183,3 +183,23 @@
 **Estado resultante:** Fase 5 cerrada en `feature/autorizacion-roles` (sin commitear todavía). Checklist en verde: `pytest` 75 unitarios + 13 integración contra BD real, `ruff` y `black` OK. Pendiente: Fase 6 (cierre: merge a develop + tag semver).
 
 ---
+
+## 2026-09-14 — Fase 6 completada: cierre documental (merge a develop, tag v1.3.0, limpieza de ramas)
+
+**Qué se hizo:** se cerró la Fase 6 (cierre) de forma **documental** (decisión del usuario: no se tocó `main` ni se creó tag de cierre; microservicio completo y verificado en `develop`). Operaciones git previas al cierre: merge de `feature/autorizacion-roles` → `develop` (`84a93b6`, `--no-ff`, previa integración de `origin/develop`), tag anotado `v1.3.0`, push de `develop` (`c0aaba8..84a93b6`) y del tag, y limpieza de ramas ya mergeadas.
+
+**Decisiones/acciones:**
+- Cierre de fases del plan: los entregables de la Fase 6 (tag por fase, docs al día, tests en verde, merge a develop) ya estaban cubiertos; el tag de la última fase es `v1.3.0` (pusheado).
+- **Release a `main`: queda pendiente y no bloquea** — `main` quedó atrasado respecto de `develop`. Se documentó como residual en `estado_actual_proyecto.md` §7.
+- Se creó la rama `feature/fase-6-cierre` desde `develop` para el cierre (sin commits de código; solo contendrá el cierre documental). Queda disponible para reutilizar en un futuro release.
+- **Limpieza de ramas**: se borraron las features ya mergeadas en `develop`, local y remoto: `feature/autorizacion-roles`, `feature/docs-readme`, `feature/migracion-bd`, `feature/tests-fase-3`, `feature/tests-integracion`. La excepción fue `origin/feature/docs-readme`, que el remoto **rechazó borrar por ser la rama default de GitHub** (refusing to delete the current branch); para limpiarla hay que cambiar el default branch en Settings → Branches.
+- Punto de realidad post-cierre: ramas locales = `develop` (actualizada), `main`, `feature/fase-6-cierre`; remotas = `develop`, `main`, `feature/docs-readme`. Tags `v1.0.0`…`v1.3.0`.
+
+**Archivos/módulos tocados:**
+- `docs/plan_implementacion.md` — Fase 6 ✅ (entregables marcados + notas de cierre documental).
+- `docs/estado_actual_proyecto.md` — §7 agregado pendiente nº7: release a `main` atrasado y nota de cierre documental de la Fase 6.
+- Sin cambios de código.
+
+**Estado resultante:** Fase 6 completada. Checklist en verde (`ruff`/`black`/`pytest` 75 unitarios + 13 integración contra BD real). `develop` = `84a93b6` pusheado, tag `v1.3.0` pusheado. Pendiente futuro (no bloqueante): release de `develop` → `main`.
+
+---
