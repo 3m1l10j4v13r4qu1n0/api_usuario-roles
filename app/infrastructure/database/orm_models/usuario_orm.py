@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import ClassVar
+from typing import Any
 
 from sqlalchemy import String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -12,7 +12,7 @@ class UsuarioORM(Base):
 
     __tablename__ = "usuarios"
 
-    __mapper_args__: ClassVar[dict] = {"eager_defaults": True}
+    __mapper_args__: dict[str, Any] = {"eager_defaults": True}  # noqa: RUF012
 
     # Clave primaria
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
