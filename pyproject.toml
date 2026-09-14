@@ -11,3 +11,10 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # Adapter de Google: catch-all que envuelve errores de gspread en SincronizacionError
 "app/infrastructure/google/google_sheets_client.py" = ["BLE001"]
+
+[tool.pytest.ini_options]
+addopts = "--ignore=tests/integration"
+markers = [
+    "integracion: requiere una base de datos real (PostgreSQL via .env)",
+
+]
