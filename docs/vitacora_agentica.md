@@ -82,3 +82,20 @@
 **Estado resultante:** ORM models 100% estilo SQLAlchemy 2.0 con tipos correctos para Pylance/mypy. Checklist en verde, esquema de BD intacto, flujo real verificado.
 
 ---
+
+## 2026-09-14 — Fix post-tag v1.0.1: anotación de `__mapper_args__` en UsuarioORM
+
+**Qué se hizo:** por feedback de Pylance (`reportIncompatibleVariableOverride`), se corrigió la anotación de `__mapper_args__` en `usuario_orm.py`. El `ClassVar[dict]` anterior entraba en conflicto con la variable de instancia del mismo nombre declarada por `DeclarativeBase` (clase base de SQLAlchemy 2.0).
+
+**Decisiones/acciones:**
+- Se reemplazó `__mapper_args__: ClassVar[dict] = {"eager_defaults": True}` por `__mapper_args__: dict[str, Any] = {"eager_defaults": True}  # noqa: RUF012`.
+- El `# noqa: RUF012` exime la regla de ruff (mutable default en atributo de clase) porque `__mapper_args__` es un atributo especial del mapper que SQLAlchemy consume como configuración estática; no aplica la convención de `ClassVar`.
+- Regla práctica registrada: en SQLAlchemy 2.0 con `DeclarativeBase`, los atributos especiales (`__tablename__`, `__mapper_args__`, `__table_args__`) no deben anotarse como `ClassVar`; el `ClassVar` queda reservado para atributos propios de configuración ajenos a la API de SQLAlchemy.
+- Sin cambio de comportamiento en runtime; solo tipado. Tag `v1.0.1` (patch post-tag v1.0.0, según regla de versionado).
+
+**Archivos/módulos tocados:**
+- `app/infrastructure/database/orm_models/usuario_orm.py` — anotación de `__mapper_args__`
+
+**Estado resultante:** Pylance/mypy sin conflicto de anulación. Checklist en verde (`ruff`/`black`/`pytest` 34 passed, `alembic check` sin cambios de esquema). Commit `4fb4e7c`, tag `v1.0.1` pusheado.
+
+---
