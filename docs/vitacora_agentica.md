@@ -83,6 +83,24 @@
 
 ---
 
+## 2026-09-14 — Fase 3: tests unitarios UC2..UC9 con fakes
+
+**Qué se hizo:** se implementaron los tests unitarios de los 8 casos de uso restantes (UC2 a UC9) en `tests/unit/domian/services/`, siguiendo el patrón de `test_uc1_login.py` (fakes en memoria por archivo, `asyncio.run`, clases de test, docstring de cabecera).
+
+**Decisiones/acciones:**
+- Archivos creados: `test_uc2_registrar_usuario.py`, `test_uc3_listar_usuarios.py`, `test_uc4_obtener_usuario_por_id.py`, `test_uc5_actualizar_usuario.py`, `test_uc6_dar_de_baja_usuario.py`, `test_uc7_crear_rol.py`, `test_uc8_listar_roles.py`, `test_uc9_asignar_rol.py`.
+- UC5 recibe un schema Pydantic (`model_dump(exclude_unset=True)`); se usa un stub `StubUpdate` que replica esa API para mantener el dominio puro (sin Pydantic en tests de dominio).
+- Se detectó y corrigió contaminación entre tests por objetos compartidos a nivel de módulo que se mutaban en cada test (usuarios/roles): se resolvió con funciones factory (`usuario_base()`, `usuario_activo()`, `usuario_sin_roles()`) en vez de constantes.
+- También se corrigió un fixture de UC2 cuyo email existente no coincidía con el email normalizado de los datos de prueba (el duplicado real no se disparaba).
+- Cobertura por UC: registración (éxito, duplicado con/sin mayúsculas, email inválido, password corta, nombre vacío), listar usuarios/roles (vacío + con datos), obtener por id (existe + inexistente → `UsuarioNoEncontradoError`), actualizar (campos, email normalizado, password → hash, email en uso → `EmailDuplicadoError`, mismo email OK, usuario inexistente, sin campos), baja lógica (activo=False + inexistente), crear rol (éxito, sin descripción, normalización, vacío/faltante → `DatoInvalidoError`, duplicado), asignar rol (éxito, rol inexistente → `RolNoEncontradoError`, usuario inexistente → `UsuarioNoEncontradoError`).
+
+**Archivos/módulos tocados:**
+- `tests/unit/domian/services/test_uc{2..9}_*.py` — 8 archivos nuevos
+
+**Estado resultante:** Fase 3 completa. `pytest` 67 passed (34 previos + 33 nuevos), `ruff` y `black` en verde. Pendiente: Fase 4 (test de integración real) y Fase 5 (autorización por rol).
+
+---
+
 ## 2026-09-14 — Fix post-tag v1.0.1: anotación de `__mapper_args__` en UsuarioORM
 
 **Qué se hizo:** por feedback de Pylance (`reportIncompatibleVariableOverride`), se corrigió la anotación de `__mapper_args__` en `usuario_orm.py`. El `ClassVar[dict]` anterior entraba en conflicto con la variable de instancia del mismo nombre declarada por `DeclarativeBase` (clase base de SQLAlchemy 2.0).
