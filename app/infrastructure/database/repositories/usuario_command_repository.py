@@ -48,6 +48,13 @@ class UsuarioCommandRepository(UsuarioCommandPort):
             nombre_completo=usuario.nombre_completo,
             activo=usuario.activo,
         )
+
+        if usuario.ids_roles:
+            resultado = await self._session.scalars(
+                select(RolORM).where(RolORM.id.in_(usuario.ids_roles))
+            )
+            orm.roles = list(resultado.all())
+
         self._session.add(orm)
         await self._session.flush()
         await _refresh_con_roles(self._session, orm)

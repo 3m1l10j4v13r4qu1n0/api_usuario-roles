@@ -11,6 +11,7 @@ import pytest
 
 from app.application.use_cases.uc2_registrar_usuario import RegistrarUsuarioUseCase
 from app.domain.exceptions import DatoInvalidoError, EmailDuplicadoError
+from app.domain.models.rol import Rol
 from app.domain.models.usuario import Usuario
 
 
@@ -29,6 +30,14 @@ class FakeUsuarioCommandRepo:
         return usuario
 
 
+class FakeRolCommandRepo:
+    def __init__(self, roles_por_nombre: dict[str, Rol] | None = None):
+        self._roles = dict(roles_por_nombre or {})
+
+    async def buscar_por_nombre(self, nombre: str):
+        return self._roles.get(nombre)
+
+
 class FakeHasher:
     def hash_password(self, password: str) -> str:
         return f"fake:{password}"
@@ -37,9 +46,26 @@ class FakeHasher:
         return f"fake:{password}" == password_hash
 
 
+def _roles_sin_rol_defecto() -> FakeRolCommandRepo:
+    return FakeRolCommandRepo()
+
+
+def _roles_con_rol_defecto() -> FakeRolCommandRepo:
+    return FakeRolCommandRepo({"USUARIO": Rol(id=2, nombre="USUARIO")})
+
+
 @pytest.fixture
 def registrar_uc():
-    return RegistrarUsuarioUseCase(FakeUsuarioCommandRepo(), FakeHasher())
+    repo = FakeUsuarioCommandRepo()
+    rol_repo = _roles_con_rol_defecto()
+    return RegistrarUsuarioUseCase(repo, rol_repo, FakeHasher())
+
+
+@pytest.fixture
+def registrar_uc_sin_rol_defecto():
+    repo = FakeUsuarioCommandRepo()
+    rol_repo = _roles_sin_rol_defecto()
+    return RegistrarUsuarioUseCase(repo, rol_repo, FakeHasher())
 
 
 @pytest.fixture
@@ -53,7 +79,8 @@ def registrar_uc_con_email_existente():
             )
         }
     )
-    return RegistrarUsuarioUseCase(repo, FakeHasher())
+    rol_repo = _roles_con_rol_defecto()
+    return RegistrarUsuarioUseCase(repo, rol_repo, FakeHasher())
 
 
 def run(coro):
@@ -78,6 +105,16 @@ class TestRegistrarUsuario:
         assert usuario.password_hash == "fake:clave1234"
         assert usuario.nombre_completo == "Juan Pérez"
         assert usuario.activo is True
+        assert usuario.ids_roles == [2]
+
+    def test_registro_autoasigna_rol_usuario_por_defecto(self, registrar_uc):
+        usuario = run(registrar_uc.execute(DATOS_VALIDOS))
+        assert 2 in usuario.ids_roles
+
+    def test_registro_sin_rol_defecto_crea_sin_roles(
+        self, registrar_uc_sin_rol_defecto
+    ):
+        usuario = run(registrar_uc_sin_rol_defecto.execute(DATOS_VALIDOS))
         assert usuario.ids_roles == []
 
     def test_registro_normaliza_email_y_nombre(self, registrar_uc):
