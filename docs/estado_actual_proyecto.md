@@ -82,6 +82,7 @@ Servicios de dominio puros: `validacion.py` (RN04 email, RN05 campos obligatorio
 4. ~~Observado: roles fijos hasta re-login~~ ✅ resuelto por el patrón híbrido: asignar/quitar rol o dar de baja invalidan el cache y el cambio se refleja en el próximo request sin re-login.
 5. Si se escala horizontalmente, el cache in-memory debe reemplazarse por Redis (el port `EstadoUsuarioCachePort` soporta el cambio).
 6. Refresh token: hoy solo access token JWT (corto, 15 min). Decidir si hace falta en una fase futura.
+7. **Release a `main`** pendiente: `main` quedó atrasado respecto de `develop`. La Fase 6 se cerró de forma **documental** (sin release). Se creó la rama `feature/fase-6-cierre` desde `develop` (reutilizable) para cuando se decida mergear o hacer release.
 
 ## 8. Decisiones y convenciones vigentes
 
@@ -93,3 +94,16 @@ Servicios de dominio puros: `validacion.py` (RN04 email, RN05 campos obligatorio
 - El directorio de tests de dominio es `tests/unit/domian/` (tipeo original heredado de `api_normalizacion_afiliados`).
 - Reglas y skills traídos y adaptados de `api_normalizacion_afiliados`: `.agents/rules/*` y `.agents/skills/*` (`di-architect-scaffold`, `estado-actual-proyecto`, `vitacora-agentica`, `rest-api-design`, `apa-software-doc`, `pdf-to-markdown`).
 - Al terminar trabajo relevante, actualizar este archivo (in-place) y agregar entrada a `vitacora_agentica.md` (append-only).
+
+## 9. Documentación (formato educativo)
+
+Se generó documentación **por ingeniería inversa** desde el código, replicando el formato Benn de `api_normalizacion_afiliados/docs/`, en `feature/documentacion`:
+
+- `docs/01_global/` — visión, alcance, actores y reglas de negocio (RN01..RN06 + USR-RN07..RN15).
+- `docs/02_tecnico/` — decisiones técnicas (stack, arquitectura, patrón híbrido), modelo de datos global y **7 diagramas PlantUML** (`.puml` + `.svg`): arquitectura, casos de uso, clases, objetos, ER y secuencias (login UC1 + autorización híbrida/revocación).
+- `docs/03_procesos/` — Definition of Ready (DoR) y checklist de "listo para merge".
+- `docs/04_historias_usuario/HU-01..HU-10/` — una HU por caso de uso (UC1..UC10), con 5 archivos c/u: tarjeta, API, caso de uso expandido, modelos de datos y plan de pruebas (con los nombres reales de los tests).
+- `docs/05_metodologia_agil/` — metodología Kanban/WIP con ciclo de desarrollo con IA.
+- `docs/06_auditorias/` — auditoría de las 10 HUs vs código real (evidencia endpoint + tests, 10/10 ✅).
+
+Decisiones de la tarea: se usó `_pruebas.md` (no `_pruevas.md`); los SVG se renderizaron con `plantuml.jar` + motor Smetana (sin Graphviz); sin duplicados en la raíz (a diferencia del repo de referencia).
