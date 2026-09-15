@@ -25,23 +25,29 @@ El sistema actúa como puerta de entrada a recursos protegidos, garantizando que
 - Autenticar usuarios mediante JWT
 - Gestionar usuarios (alta, consulta, actualización y baja lógica)
 - Gestionar roles del sistema
-- Asignar roles a usuarios
+- Asignar y quitar roles a usuarios
 - Autorizar endpoints por rol
 - Mantener el dominio desacoplado de frameworks (arquitectura limpia)
 
 ---
 
-## Documentación funcional
+## 📚 Documentación
 
-La documentación del proyecto se encuentra en la carpeta `docs/`:
+La documentación del proyecto se encuentra en `docs/`, separada por áreas:
 
 - `estado_actual_proyecto.md` — foto actual del proyecto (fuente de verdad)
 - `plan_implementacion.md` — plan por fases (andamiaje → base → autenticación → autorización → cierre)
 - `vitacora_agentica.md` — historial cronológico append-only de decisiones
+- `01_global/` — visión, alcance, actores y reglas de negocio (RN01..RN06 + USR-RN07..RN15)
+- `02_tecnico/` — decisiones técnicas, modelo de datos global y **diagramas PlantUML** (`.puml` + `.svg` renderizados): arquitectura, casos de uso, clases, objetos, ER y secuencias (login UC1 + autorización híbrida)
+- `03_procesos/` — Definition of Ready (DoR) y checklist de "listo para merge"
+- `04_historias_usuario/HU-01..HU-10/` — una HU por caso de uso, con tarjeta, API, caso de uso expandido, modelos de datos y plan de pruebas
+- `05_metodologia_agil/` — metodología Kanban con ciclo de desarrollo con IA
+- `06_auditorias/` — auditoría de las 10 HUs vs código real
 
 ---
 
-## Funcionalidades principales
+## ⚙️ Funcionalidades principales
 
 - Login con emisión de token JWT (`sub` = id de usuario + `roles`)
 - Registro de usuarios con contraseña hasheada (bcrypt)
@@ -49,13 +55,14 @@ La documentación del proyecto se encuentra en la carpeta `docs/`:
 - Actualización parcial de usuarios (solo campos presentes, password rehasheada)
 - Baja lógica de usuarios (`activo = False`)
 - Creación y listado de roles
-- Asignación de roles a usuarios (tabla `usuario_roles`)
+- Asignación y quita de roles a usuarios (tabla `usuario_roles`)
+- **Patrón híbrido JWT + cache TTL**: token corto (15 min) + cache de estado (60 s) con revocación de rol/baja en caliente (sin esperar la expiración del JWT)
 - Protección de endpoints por JWT y autorización por rol (`require_roles("ADMIN")`)
 - Seed de roles iniciales (`ADMIN`, `USUARIO`)
 
 ---
 
-## Endpoints principales
+## 🔌 Endpoints
 
 | Método | Ruta | Descripción | Protección |
 |---|---|---|---|
@@ -63,11 +70,12 @@ La documentación del proyecto se encuentra en la carpeta `docs/`:
 | POST | `/auth/login` | Autentica y devuelve token JWT (UC1) | pública |
 | GET | `/auth/me` | Usuario autenticado desde el token | JWT |
 | POST | `/usuarios/` | Registrar usuario (UC2) | pública* |
-| GET | `/usuarios/` | Listar usuarios (UC3) | JWT |
-| GET | `/usuarios/{usuario_id}` | Obtener usuario por ID (UC4) | JWT |
-| PATCH | `/usuarios/{usuario_id}` | Actualizar usuario (UC5) | JWT |
-| DELETE | `/usuarios/{usuario_id}` | Baja lógica (UC6) | JWT |
-| POST | `/usuarios/{usuario_id}/roles` | Asignar rol a usuario (UC9) | JWT |
+| GET | `/usuarios/` | Listar usuarios (UC3) | JWT + ADMIN |
+| GET | `/usuarios/{usuario_id}` | Obtener usuario por ID (UC4) | JWT (ADMIN o propio) |
+| PATCH | `/usuarios/{usuario_id}` | Actualizar usuario (UC5) | JWT (ADMIN o propio) |
+| DELETE | `/usuarios/{usuario_id}` | Baja lógica (UC6) | JWT + ADMIN |
+| POST | `/usuarios/{usuario_id}/roles` | Asignar rol a usuario (UC9) | JWT + ADMIN |
+| DELETE | `/usuarios/{usuario_id}/roles/{rol_id}` | Quitar rol a usuario (UC10) | JWT + ADMIN |
 | POST | `/roles/` | Crear rol (UC7) | JWT + ADMIN |
 | GET | `/roles/` | Listar roles (UC8) | JWT + ADMIN |
 
@@ -77,45 +85,222 @@ La documentación del proyecto se encuentra en la carpeta `docs/`:
 
 ---
 
-## Casos de uso
+## ✅ Casos de uso
 
 | UC | Descripción | Estado |
 |---|---|---|
-| UC1 | Login con JWT | 🟡 parcial — sin migración / BD |
-| UC2 | Registrar usuario | 🟡 parcial — sin migración / BD |
-| UC3 | Listar usuarios | 🟡 parcial — sin migración / BD |
-| UC4 | Obtener usuario por ID | 🟡 parcial — sin migración / BD |
-| UC5 | Actualizar usuario | 🟡 parcial — sin migración / BD |
-| UC6 | Dar de baja usuario (baja lógica) | 🟡 parcial — sin migración / BD |
-| UC7 | Crear rol | 🟡 parcial — sin migración / BD |
-| UC8 | Listar roles | 🟡 parcial — sin migración / BD |
-| UC9 | Asignar rol a usuario | 🟡 parcial — sin migración / BD |
+| UC1 | Login con JWT (+ `GET /auth/me`) | ✅ completado |
+| UC2 | Registrar usuario | ✅ completado |
+| UC3 | Listar usuarios | ✅ completado |
+| UC4 | Obtener usuario por ID | ✅ completado |
+| UC5 | Actualizar usuario | ✅ completado |
+| UC6 | Dar de baja usuario (baja lógica) | ✅ completado |
+| UC7 | Crear rol | ✅ completado |
+| UC8 | Listar roles | ✅ completado |
+| UC9 | Asignar rol a usuario | ✅ completado |
+| UC10 | Quitar rol a usuario | ✅ completado |
 
 ---
 
-## Arquitectura
+## 🏗️ Estructura del Proyecto
 
-El proyecto sigue principios de **Clean Architecture + Hexagonal (Ports & Adapters)**, separando:
-
-- Capa de dominio (entidades puras, servicios y ports)
-- Capa de aplicación (casos de uso)
-- Capa de infraestructura (adapters: ORM, repositorios, bcrypt, JWT, DI)
-- Capa de presentación (routers FastAPI, schemas y handlers)
-
-Esto permite mantener el sistema modular, testeable y desacoplado de frameworks.
+```
+api_usuario-roles/
+│
+├── alembic/
+│   ├── versions/
+│   │   └── 9378f376749f_crear_tablas_usuarios_roles.py
+│   ├── env.py
+│   └── script.py.mako
+│   💬 Migraciones de base de datos (esquema versionado)
+│
+├── app/
+│
+│   ├── main.py
+│   💬 Punto de entrada de la aplicación (FastAPI)
+│
+│   ├── presentation/  🟦 CAPA DE PRESENTACIÓN (Delivery)
+│   │   ├── routers/
+│   │   │   ├── auth.py
+│   │   │   ├── usuarios.py
+│   │   │   └── roles.py
+│   │   │   💬 Define endpoints REST (HTTP → Use Cases)
+│   │   │
+│   │   ├── schemas/
+│   │   │   ├── auth_schema.py
+│   │   │   ├── usuario_schema.py
+│   │   │   └── rol_schema.py
+│   │   │   💬 DTOs de entrada/salida (Pydantic)
+│   │   │
+│   │   └── handlers.py
+│   │       💬 Traduce excepciones de dominio → HTTP (payload {"error": ...})
+│   │
+│   │   🎯 Responsabilidad:
+│   │   - Recibir requests HTTP
+│   │   - Validar formato (NO reglas de negocio)
+│   │   - Invocar casos de uso
+│   │
+│   ├── application/  🟩 CAPA DE APLICACIÓN (Use Cases)
+│   │   └── use_cases/
+│   │       ├── uc1_login.py .. uc10_quitar_rol.py
+│   │   💬 10 casos de uso (UC1..UC10)
+│   │
+│   │   🎯 Responsabilidad:
+│   │   - Orquestar la lógica de negocio
+│   │   - Coordinar servicios del dominio
+│   │   - Usar repositorios (a través de puertos)
+│   │   - NO depende de infraestructura concreta
+│   │
+│   ├── domain/  🟥 CAPA DE DOMINIO (Core del negocio)
+│   │
+│   │   ├── models/
+│   │   │   ├── usuario.py
+│   │   │   ├── rol.py
+│   │   │   └── estado_usuario.py
+│   │   │   💬 Entidades y modelos del dominio (reglas puras, dataclasses)
+│   │   │
+│   │   ├── services/
+│   │   │   ├── validacion.py
+│   │   │   ├── normalizacion.py
+│   │   │   └── auth_service.py       ← creacion/verificacion de credenciales y autorización
+│   │   │   💬 Lógica de negocio compleja desacoplada de entidades
+│   │   │
+│   │   ├── ports/
+│   │   │   ├── usuario/
+│   │   │   │   ├── usuario_command_port.py
+│   │   │   │   └── usuario_query_port.py
+│   │   │   ├── rol/
+│   │   │   │   ├── rol_command_port.py
+│   │   │   │   └── rol_query_port.py
+│   │   │   └── authentication/
+│   │   │       ├── password_hasher_port.py
+│   │   │       ├── token_provider_port.py
+│   │   │       └── estado_usuario_cache_port.py
+│   │   │   💬 Interfaces (contratos) → patrón Ports & Adapters
+│   │   │
+│   │   ├── exceptions.py
+│   │   │   💬 Excepciones propias del dominio
+│   │
+│   │   🎯 Responsabilidad:
+│   │   - Contener las reglas de negocio
+│   │   - Ser independiente de frameworks (ni bcrypt, ni PyJWT)
+│   │   - Definir contratos (ports)
+│   │
+│   ├── infrastructure/  🟨 CAPA DE INFRAESTRUCTURA (Adapters)
+│   │
+│   │   ├── core/
+│   │   │   └── config.py
+│   │   │   💬 Configuración global (env, settings)
+│   │   │
+│   │   ├── auth/
+│   │   │   ├── password_hasher.py      ← bcrypt
+│   │   │   └── jwt_token_provider.py   ← PyJWT
+│   │   │   💬 Adapters de hashing y tokens
+│   │   │
+│   │   ├── cache/
+│   │   │   └── estado_usuario_cache_memoria.py
+│   │   │   💬 Cache TTL in-memory del estado del usuario autenticado (patrón híbrido)
+│   │   │
+│   │   ├── database/
+│   │   │   ├── connection.py
+│   │   │   │   💬 Conexión async a PostgreSQL (get_db con commit automático)
+│   │   │   ├── orm_models/
+│   │   │   │   ├── usuario_orm.py
+│   │   │   │   └── rol_orm.py          ← incluye tabla usuario_roles
+│   │   │   │   💬 Modelos ORM (SQLAlchemy)
+│   │   │   ├── repositories/
+│   │   │   │   ├── usuario_command_repository.py
+│   │   │   │   ├── usuario_query_repository.py
+│   │   │   │   ├── rol_command_repository.py
+│   │   │   │   └── rol_query_repository.py
+│   │   │   │   💬 Implementaciones de los ports (Adapters)
+│   │   │   ├── seed.py             ← datos iniciales (ADMIN, USUARIO)
+│   │   │   └── seed_runner.py      ← script para ejecutar el seed
+│   │   │   💬 Datos iniciales para la BD
+│   │   │
+│   │   ├── dependencies/
+│   │   │   ├── dependency_injection.py
+│   │   │   └── auth_dependencies.py   ← get_current_user, require_roles, require_mismo_usuario_o_admin
+│   │   │   💬 Inyección de dependencias (wiring de la app)
+│   │
+│   │   🎯 Responsabilidad:
+│   │   - Implementar detalles técnicos (DB, hashing, JWT)
+│   │   - Adaptar interfaces del dominio
+│   │   - NO contener lógica de negocio
+│   │
+│   └── requirements.txt
+│
+├── docs/  📚 Documentación
+│   ├── estado_actual_proyecto.md   ← foto del estado actual (fuente de verdad)
+│   ├── plan_implementacion.md      ← plan por fases
+│   ├── vitacora_agentica.md        ← historial append-only
+│   ├── 01_global/                  ← visión, alcance, actores, reglas de negocio
+│   ├── 02_tecnico/                 ← decisiones técnicas, modelo de datos y diagramas (puml + svg)
+│   ├── 03_procesos/                ← DoR y checklist de listo-para-merge
+│   ├── 04_historias_usuario/       ← HU-01..HU-10 (5 archivos c/u)
+│   ├── 05_metodologia_agil/        ← metodología Kanban con IA
+│   └── 06_auditorias/              ← auditoría de HUs vs código
+│
+├── tests/  🧪 TESTING
+│   ├── conftest.py   ← aísla los tests de DATABASE_URL (valor por defecto)
+│   ├── unit/domian/services/        ← heredado de api_normalizacion_afiliados
+│   │   ├── test_uc1_login.py .. test_uc10_quitar_rol.py
+│   │   ├── test_validacion.py
+│   │   ├── test_normalizacion.py
+│   │   └── test_auth_service.py
+│   │   💬 75 tests unitarios con fakes (sin BD)
+│   └── integration/
+│       ├── test_flujo_completo.py
+│       └── test_autorizacion_roles.py
+│       💬 13 tests de integración contra BD real (requieren .env + Postgres con seed)
+│
+├── AGENTS.md
+│   💬 Reglas y convenciones del proyecto para agentes
+│
+├── README.md
+│   💬 Documentación principal del proyecto
+│
+├── alembic.ini
+│   💬 Configuración de migraciones
+│
+├── .env.example
+│   💬 Variables de entorno de ejemplo
+│
+└── pyproject.toml
+    💬 Configuración de linting/formato (ruff, black)
+```
 
 ---
 
-## Tecnologías utilizadas
+## 🧠 Resumen de Arquitectura
 
-- Python 3.13.5
-- FastAPI
-- SQLAlchemy 2.0 (async) + asyncpg
-- PostgreSQL
-- Pydantic / pydantic-settings
-- bcrypt (hashing de contraseñas)
-- PyJWT (emisión y validación de tokens)
-- Alembic (migraciones)
+```
+Presentation (FastAPI)
+        ↓
+Application (Use Cases)
+        ↓
+Domain (Entities + Rules + Ports)
+        ↓
+Infrastructure (DB, bcrypt, JWT, Cache)
+```
+
+### Patrón híbrido de autorización
+
+- **JWT corto (15 min)** con identidad: `sub` (id) + `roles`, firmado HS256.
+- Cada request protegido resuelve el **estado real** (activo + roles) desde un cache TTL (60 s) o desde la BD en cache miss.
+- Cambios de rol/baja lógica se **revocan en caliente**: se invalida el cache y el próximo request ya ve el nuevo estado, sin esperar la expiración del token.
+- Matriz de protección: endpoints de listado/baja/asignar-quitar rol y `/roles/*` exigen `ADMIN`; `GET/PATCH /usuarios/{id}` exigen ser el propio usuario o `ADMIN`.
+
+---
+
+## 🎯 Principios Aplicados
+
+* ✔️ Separación de responsabilidades
+* ✔️ Inversión de dependencias (DIP)
+* ✔️ Arquitectura Hexagonal (Ports & Adapters)
+* ✔️ Dominio desacoplado de frameworks (dominio puro estricto)
+* ✔️ Inyección de dependencias con `Depends` (nunca adapters instanciados en use cases)
+* ✔️ Código testeable y mantenible
 
 ---
 
@@ -149,241 +334,55 @@ uvicorn app.main:app --reload
 ```
 ---
 
-# 🏗️ Estructura del Proyecto — API Usuario-Roles
+## 🧪 Testing
 
-Este proyecto implementa una arquitectura basada en **Clean Architecture + Hexagonal (Ports & Adapters)**, separando claramente responsabilidades entre capas.
+```bash
+# Tests unitarios (puros, con fakes, sin BD) — 75 tests
+pytest
 
----
+# Tests de integración (requieren .env + PostgreSQL con seed) — 13 tests
+python -m pytest tests/integration/
 
-## 📦 Estructura General
-
+# Lint y formato
+venv/bin/ruff check .
+venv/bin/black --check .
 ```
-api_usuario-roles/
-│
-├── alembic/
-│   ├── versions/
-│   ├── env.py
-│   └── script.py.mako
-│   💬 Migraciones de base de datos (versionado del esquema)
-│
-├── app/
-│
-│   ├── main.py
-│   💬 Punto de entrada de la aplicación (FastAPI)
-│
-│   ├── presentation/  🟦 CAPA DE PRESENTACIÓN (Delivery)
-│   │   ├── routers/
-│   │   │   ├── auth.py
-│   │   │   ├── usuarios.py
-│   │   │   └── roles.py
-│   │   │   💬 Define endpoints REST (HTTP → Use Cases)
-│   │   │
-│   │   ├── schemas/
-│   │   │   ├── auth_schema.py
-│   │   │   ├── usuario_schema.py
-│   │   │   └── rol_schema.py
-│   │   │   💬 DTOs de entrada/salida (Pydantic)
-│   │   │
-│   │   └── handlers.py
-│   │       💬 Traduce excepciones de dominio → HTTP (payload {"error": ...})
-│   │
-│   │   🎯 Responsabilidad:
-│   │   - Recibir requests HTTP
-│   │   - Validar formato (NO reglas de negocio)
-│   │   - Invocar casos de uso
-│   │
-│   ├── application/  🟩 CAPA DE APLICACIÓN (Use Cases)
-│   │   └── use_cases/
-│   │       ├── uc1_login.py
-│   │       ├── uc2_registrar_usuario.py
-│   │       ├── uc3_listar_usuarios.py
-│   │       ├── uc4_obtener_usuario_por_id.py
-│   │       ├── uc5_actualizar_usuario.py
-│   │       ├── uc6_dar_de_baja_usuario.py
-│   │       ├── uc7_crear_rol.py
-│   │       ├── uc8_listar_roles.py
-│   │       └── uc9_asignar_rol.py
-│   │   💬 Implementación de casos de uso del sistema
-│   │
-│   │   🎯 Responsabilidad:
-│   │   - Orquestar la lógica de negocio
-│   │   - Coordinar servicios del dominio
-│   │   - Usar repositorios (a través de puertos)
-│   │   - NO depende de infraestructura concreta
-│   │
-│   ├── domain/  🟥 CAPA DE DOMINIO (Core del negocio)
-│   │
-│   │   ├── models/
-│   │   │   ├── usuario.py
-│   │   │   └── rol.py
-│   │   │   💬 Entidades y modelos del dominio (reglas puras, dataclasses)
-│   │   │
-│   │   ├── services/
-│   │   │   ├── validacion.py
-│   │   │   ├── normalizacion.py
-│   │   │   └── auth_service.py
-│   │   │   💬 Lógica de negocio compleja desacoplada de entidades
-│   │   │
-│   │   ├── ports/
-│   │   │   ├── usuario/
-│   │   │   │   ├── usuario_command_port.py
-│   │   │   │   └── usuario_query_port.py
-│   │   │   ├── rol/
-│   │   │   │   ├── rol_command_port.py
-│   │   │   │   └── rol_query_port.py
-│   │   │   └── authentication/
-│   │   │       ├── password_hasher_port.py
-│   │   │       └── token_provider_port.py
-│   │   │   💬 Interfaces (contratos) → patrón Ports & Adapters
-│   │   │
-│   │   ├── exceptions.py
-│   │   │   💬 Excepciones propias del dominio
-│   │
-│   │   🎯 Responsabilidad:
-│   │   - Contener las reglas de negocio
-│   │   - Ser independiente de frameworks (ni bcrypt, ni PyJWT)
-│   │   - Definir contratos (ports)
-│   │
-│   ├── infrastructure/  🟨 CAPA DE INFRAESTRUCTURA (Adapters)
-│   │
-│   │   ├── core/
-│   │   │   └── config.py
-│   │   │   💬 Configuración global (env, settings)
-│   │   │
-│   │   ├── auth/
-│   │   │   ├── password_hasher.py      ← bcrypt
-│   │   │   └── jwt_token_provider.py   ← PyJWT
-│   │   │   💬 Adapters de hashing y tokens
-│   │   │
-│   │   ├── database/
-│   │   │   ├── connection.py
-│   │   │   │   💬 Conexión async a PostgreSQL (get_db con commit automático)
-│   │   │   ├── orm_models/
-│   │   │   │   ├── usuario_orm.py
-│   │   │   │   └── rol_orm.py          ← incluye tabla usuario_roles
-│   │   │   │   💬 Modelos ORM (SQLAlchemy)
-│   │   │   ├── repositories/
-│   │   │   │   ├── usuario_command_repository.py
-│   │   │   │   ├── usuario_query_repository.py
-│   │   │   │   ├── rol_command_repository.py
-│   │   │   │   └── rol_query_repository.py
-│   │   │   │   💬 Implementaciones de los ports (Adapters)
-│   │   │   ├── seed.py             ← datos iniciales (ADMIN, USUARIO)
-│   │   │   └── seed_runner.py      ← script para ejecutar el seed
-│   │   │   💬 Datos iniciales para la BD
-│   │   │
-│   │   ├── dependencies/
-│   │   │   ├── dependency_injection.py
-│   │   │   └── auth_dependencies.py   ← get_current_user, require_roles
-│   │   │   💬 Inyección de dependencias (wiring de la app)
-│   │
-│   │   🎯 Responsabilidad:
-│   │   - Implementar detalles técnicos (DB, hashing, JWT)
-│   │   - Adaptar interfaces del dominio
-│   │   - NO contener lógica de negocio
-│   │
-│   └── requirements.txt
-│
-├── docs/
-│   ├── estado_actual_proyecto.md   ← foto del estado actual (fuente de verdad)
-│   ├── plan_implementacion.md      ← plan por fases
-│   └── vitacora_agentica.md        ← historial append-only
-│   💬 Memoria del proyecto
-│
-├── tests/  🧪 TESTING
-│   ├── conftest.py   ← aísla los tests de DATABASE_URL (valor por defecto)
-│   └── unit/
-│       └── domian/                 ← directorio heredado de api_normalizacion_afiliados
-│           └── services/
-│               ├── test_validacion.py
-│               ├── test_normalizacion.py
-│               ├── test_auth_service.py
-│               └── test_uc1_login.py   ← tests con fakes (sin BD)
-│   💬 Tests unitarios del dominio (in-memory)
-│
-├── AGENTS.md
-│   💬 Reglas y convenciones del proyecto para agentes
-│
-├── README.md
-│   💬 Documentación principal del proyecto
-│
-├── alembic.ini
-│   💬 Configuración de migraciones
-│
-├── .env.example
-│   💬 Variables de entorno de ejemplo
-│
-└── pyproject.toml
-    💬 Configuración de linting/formato (ruff, black)
-```
-
----
-
-## 🧠 Resumen de Arquitectura
-
-```
-Presentation (FastAPI)
-        ↓
-Application (Use Cases)
-        ↓
-Domain (Entities + Rules + Ports)
-        ↓
-Infrastructure (DB, bcrypt, JWT)
-```
-
----
-
-## 🎯 Principios Aplicados
-
-* ✔️ Separación de responsabilidades
-* ✔️ Inversión de dependencias (DIP)
-* ✔️ Arquitectura Hexagonal (Ports & Adapters)
-* ✔️ Dominio desacoplado de frameworks (dominio puro estricto)
-* ✔️ Inyección de dependencias con `Depends` (nunca adapters instanciados en use cases)
-* ✔️ Código testeable y mantenible
-
----
-
-## 🚀 Beneficios
-
-* Escalable
-* Testeable
-* Independiente de tecnologías externas
-* Fácil de mantener y extender
-* Capa de auth reutilizable para otros microservicios
 
 ---
 
 ## ✅ Estado del proyecto
 
-✔ Fase 1 — Andamiaje: COMPLETADA
+✔ **Fase 1 — Andamiaje:** COMPLETADA  
+Clean Architecture + Hexagonal (Ports & Adapters), SQLAlchemy 2.0 async, DI con `Depends`, 10 casos de uso (UC1..UC10), adapters de auth (bcrypt/PyJWT), routers, handlers y seed de roles.
 
-Clean Architecture + Hexagonal (Ports & Adapters), SQLAlchemy 2.0 async, DI con `Depends(get_*_ucN)`, 9 casos de uso (UC1..UC9), adapters de auth (bcrypt/PyJWT), routers y seed de roles.
+✔ **Fase 2 — Base de datos real:** COMPLETADA  
+Migración inicial de Alembic (`9378f376749f_crear_tablas_usuarios_roles.py`), `alembic upgrade head` y seed ejecutados contra PostgreSQL real.
 
-📄 Ver detalle en: `docs/plan_implementacion.md`
+✔ **Fase 3 — Tests unitarios UC2..UC10:** COMPLETADA  
+75 tests con fakes (dominio + presentación).
 
-⏳ Fase 2 — Base de datos real: PENDIENTE
+✔ **Fase 4 — Test de integración real:** COMPLETADA  
+13 tests contra BD real (flujo completo + autorización por rol).
 
-Crear migración inicial de Alembic, correr `alembic upgrade head` contra PostgreSQL real y ejecutar el seed.
+✔ **Fase 5 — Autorización por rol:** COMPLETADA  
+Patrón híbrido JWT + cache TTL, `require_roles("ADMIN")`, `require_mismo_usuario_o_admin`, revocación en caliente.
 
-⏳ Fase 3 — Tests unitarios UC2..UC9: PENDIENTE
+Fase 6 — Cierre: **COMPLETADA (cierre documental)**  
+Documentación integral + auditoría de HUs. No se tocó `main`; **release `develop → main` pendiente (no bloqueante)**. Última release: tag **`v1.3.0`** en `develop`.
 
-⏳ Fase 4 — Test de integración real: PENDIENTE
-
-⏳ Fase 5 — Autorización por rol: PENDIENTE
-
-⏳ Fase 6 — Cierre (tag + merge a develop): PENDIENTE
+📄 Ver detalle en: `docs/plan_implementacion.md` y `docs/estado_actual_proyecto.md`.
 
 ---
 
 ## 🗺️ Roadmap
 
 - Fase 1: Andamiaje ✔
-- Fase 2: Base de datos real (migración + seed + prueba real) ⏳
-- Fase 3: Tests unitarios UC2..UC9 con fakes ⏳
-- Fase 4: Test de integración real ⏳
-- Fase 5: Autorización por rol (definir roles por endpoint) ⏳
-- Fase 6: Cierre (tag `v1.0.0`, merge a develop) ⏳
+- Fase 2: Base de datos real (migración + seed + prueba real) ✔
+- Fase 3: Tests unitarios UC2..UC10 con fakes ✔
+- Fase 4: Test de integración real ✔
+- Fase 5: Autorización por rol (patrón híbrido + revocación) ✔
+- Fase 6: Cierre (documentación + auditoría) ✔
+- Futuro (no bloqueante): release `develop → main` · refresh tokens · cache Redis (swap del port `EstadoUsuarioCachePort`)
 
 ---
 
@@ -401,7 +400,7 @@ El foco está puesto en análisis, documentación, trazabilidad y coherencia fun
 
 ## Autor
 
-Emilio Javier Aquino
+Emilio Javier Aquino  
 Estudiante de Analista de Sistemas
 
 ## 📄 Licencia
