@@ -79,7 +79,7 @@ La documentación del proyecto se encuentra en `docs/`, separada por áreas:
 | POST | `/roles/` | Crear rol (UC7) | JWT + ADMIN |
 | GET | `/roles/` | Listar roles (UC8) | JWT + ADMIN |
 
-> *`POST /usuarios/` es temporalmente público para permitir el alta inicial; decisión pendiente de cambiarlo a JWT + ADMIN.
+> *`POST /usuarios/` queda **público** por decisión del equipo (revisitable) para permitir el alta inicial; autoasigna el rol `USUARIO`.
 >
 > Las respuestas de error usan payload uniforme `{"error": "mensaje"}`. Mapeo: 401 (credenciales/token inválido), 403 (rol no autorizado), 404 (no encontrado), 409 (email duplicado), 422 (datos inválidos).
 
@@ -263,6 +263,11 @@ api_usuario-roles/
 ├── alembic.ini
 │   💬 Configuración de migraciones
 │
+├── Dockerfile
+├── docker-entrypoint.sh
+├── .dockerignore
+│   💬 Despliegue en contenedor (`docker build -t api-usuario-roles .`)
+│
 ├── .env.example
 │   💬 Variables de entorno de ejemplo
 │
@@ -367,8 +372,11 @@ Migración inicial de Alembic (`9378f376749f_crear_tablas_usuarios_roles.py`), `
 ✔ **Fase 5 — Autorización por rol:** COMPLETADA  
 Patrón híbrido JWT + cache TTL, `require_roles("ADMIN")`, `require_mismo_usuario_o_admin`, revocación en caliente.
 
-Fase 6 — Cierre: **COMPLETADA (cierre documental)**  
-Documentación integral + auditoría de HUs. No se tocó `main`; **release `develop → main` pendiente (no bloqueante)**. Última release: tag **`v1.3.0`** en `develop`.
+Fase 6 — Cierre: **COMPLETADA**  
+Documentación integral + auditoría de HUs. Tag **`v1.4.0`**. `main` **actualizado** con todo `develop` (contenedorización + docs) en el merge `0022860` (15/09).
+
+Contenedorización: **COMPLETADA** (post-cierre, 15/09)  
+`Dockerfile` + `docker-entrypoint.sh` + `.dockerignore` (`7a8e646`); build con `docker build -t api-usuario-roles .`.
 
 📄 Ver detalle en: `docs/plan_implementacion.md` y `docs/estado_actual_proyecto.md`.
 
@@ -382,7 +390,8 @@ Documentación integral + auditoría de HUs. No se tocó `main`; **release `deve
 - Fase 4: Test de integración real ✔
 - Fase 5: Autorización por rol (patrón híbrido + revocación) ✔
 - Fase 6: Cierre (documentación + auditoría) ✔
-- Futuro (no bloqueante): release `develop → main` · refresh tokens · cache Redis (swap del port `EstadoUsuarioCachePort`)
+- Contenedorización (post-cierre): Dockerfile + entrypoint + `.dockerignore`, `main` actualizado ✔
+- Futuro (no bloqueante): release `develop → main` ya realizado · refresh tokens · cache Redis (swap del port `EstadoUsuarioCachePort`)
 
 ---
 

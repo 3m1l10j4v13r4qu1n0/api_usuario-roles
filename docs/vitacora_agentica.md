@@ -242,3 +242,38 @@ en verde (`ruff`/`black`/`pytest` 75 unitarios + 13 integración). Commits atóm
 (merge + tag, requiere OK explícito).
 
 ---
+
+## 2026-09-17 — Sincronización de documentación: cambios del 15/09 no registrados + auditoría
+
+**Qué se hizo:** se auditó el repositorio y se detectó que hubo cambios (2026-09-15) que no quedaron
+registrados en la documentación (AGENTS.md, `docs/` y `README.md` quedaron desactualizados). Se
+sincronizó la doc al estado real y se limpiaron hallazgos de la auditoría.
+
+**Cambios reales que ya estaban hechos en git/BD y NO estaban documentados:**
+- **Contenedorización (15/09, `7a8e646` + merges `1f22039`/`0022860`)**: se agregaron `Dockerfile`,
+  `docker-entrypoint.sh` y `.dockerignore` para despliegue en contenedor.
+- **README actualizado al estado real** (`f75351d`): fases completas, UC1..UC10, patrón híbrido.
+- **Release a `main` ya realizado**: `0022860` (merge `develop` → `main`, Fase "contenedorización").
+  `main` quedó **adelante** de `develop` (contiene todo + el merge). La nota "release a main pendiente"
+  y la rama `feature/fase-6-cierre` quedaron obsoletas (la rama ya no existe).
+- **Tag `v1.4.0`** (`4c9dedd`, 15/09 07:00): merge de `feature/documentacion` en `develop` (Fase 6).
+
+**Hallazgos de la auditoría y resoluciones:**
+- `AGENTS.md` desactualizado desde Fase 4: tabla de UCs, pendientes, UC10, patrón híbrido y comandos
+  docker → actualizado al estado real.
+- `docs/estado_actual_proyecto.md`: §6 (agregar contenedorización + `v1.4.0`), §7 (release ya hecho,
+  `main` adelante, rama `feature/fase-6-cierre` inexistente) y fecha de última actualización.
+- `docs/plan_implementacion.md`: Fase 6 (tag real `v1.4.0`, `main` mergeado) + contenedorización post-cierre.
+- `README.md`: estado de Fase 6/release corregido, estructura + roadmap con Docker.
+- `pyproject.toml`: se eliminó `per-file-ignore` fantasma de `app/infrastructure/google/google_sheets_client.py`
+  (ruta inexistente heredada del scaffold de `api_normalizacion_afiliados`).
+- **Rama default de GitHub**: se cambió de `feature/docs-readme` a `main` vía `gh` (con OK explícito del usuario).
+
+**Archivos/módulos tocados:** `AGENTS.md`, `README.md`, `docs/vitacora_agentica.md`,
+`docs/estado_actual_proyecto.md`, `docs/plan_implementacion.md`, `pyproject.toml`.
+
+**Estado resultante:** documentación sincronizada al estado real (git + BD). Checklist en verde
+(`ruff`/`black`/`pytest`) tras la verificación. Sin cambios de código funcional. Sin tags nuevos
+(decisión del usuario: "dejar como está").
+
+---
