@@ -8,10 +8,6 @@ ignore = [
     "DTZ007",  # fechas naive intencionales: el dominio trabaja con dates sin zona horaria
 ]
 
-[tool.ruff.lint.per-file-ignores]
-# Adapter de Google: catch-all que envuelve errores de gspread en SincronizacionError
-"app/infrastructure/google/google_sheets_client.py" = ["BLE001"]
-
 [tool.pytest.ini_options]
 addopts = "--ignore=tests/integration"
 markers = [

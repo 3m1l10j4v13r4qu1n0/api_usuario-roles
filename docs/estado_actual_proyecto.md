@@ -1,6 +1,6 @@
 # Estado Actual del Proyecto
 
-> Última actualización: 2026-09-14
+> Última actualización: 2026-09-17
 > Este archivo es una FOTO del presente, no un historial. Para el historial de cambios ver `vitacora_agentica.md`.
 > El agente debe leer este archivo completo al iniciar cualquier tarea sobre el proyecto.
 
@@ -60,6 +60,8 @@ Servicios de dominio puros: `validacion.py` (RN04 email, RN05 campos obligatorio
 ## 6. Infraestructura / Integraciones
 
 - PostgreSQL async (`DATABASE_URL`, var obligatoria). **Alembic con migración inicial aplicada** (`9378f376749f_crear_tablas_usuarios_roles`) → tablas `usuarios`, `roles`, `usuario_roles` creadas en BD real `auth_db`.
+- **Contenedorización (15/09)**: `Dockerfile` + `docker-entrypoint.sh` + `.dockerignore` para despliegue en contenedor (`7a8e646`, mergeado a `main` en `0022860`).
+- **Versiones**: tags `v1.0.0` … `v1.4.0` (último: `v1.4.0` = merge de `feature/documentacion` en `develop`, 15/09). `main` **está sincronizado y adelante** de `develop` (contiene el merge de la etapa de contenedorización).
 - Seguridad: `bcrypt==4.3.0` (`app/infrastructure/auth/password_hasher.py`), `PyJWT==2.10.1` (`app/infrastructure/auth/jwt_token_provider.py`), `cachetools==6.0.0` (`app/infrastructure/cache/estado_usuario_cache_memoria.py`). Variables `JWT_SECRET_KEY` (obligatoria), `JWT_ALGORITHM` (HS256), `JWT_EXPIRATION_MINUTES` (15 por defecto), `AUTH_CACHE_TTL_SEGUNDOS` (60), `AUTH_CACHE_MAX_ITEMS` (1000).
 - **Autorización por rol (Fase 5)**: patrón híbrido — JWT corto (identidad) + cache de estado por `user_id` (activo + roles) con TTL 60s. `get_current_user` resuelve el estado real desde el cache y, en miss, desde la BD (no confía en las claims del token). Asignar/quitar rol y dar de baja invalidan el cache → **la revocación se refleja sin re-login**.
 - Matriz de roles aplicada a los endpoints de `/usuarios/*`: listar/baja/asignar/quitar rol solo `ADMIN`; obtener/actualizar `ADMIN` o el propio usuario (dependencia `require_mismo_usuario_o_admin`); el registro queda público y autoasigna `USUARIO`. `/roles/*` sigue siendo solo `ADMIN`.
@@ -82,7 +84,7 @@ Servicios de dominio puros: `validacion.py` (RN04 email, RN05 campos obligatorio
 4. ~~Observado: roles fijos hasta re-login~~ ✅ resuelto por el patrón híbrido: asignar/quitar rol o dar de baja invalidan el cache y el cambio se refleja en el próximo request sin re-login.
 5. Si se escala horizontalmente, el cache in-memory debe reemplazarse por Redis (el port `EstadoUsuarioCachePort` soporta el cambio).
 6. Refresh token: hoy solo access token JWT (corto, 15 min). Decidir si hace falta en una fase futura.
-7. **Release a `main`** pendiente: `main` quedó atrasado respecto de `develop`. La Fase 6 se cerró de forma **documental** (sin release). Se creó la rama `feature/fase-6-cierre` desde `develop` (reutilizable) para cuando se decida mergear o hacer release.
+7. ~~**Release a `main`** pendiente~~ ✅ resuelto (15/09): `main` se actualizó con todo de `develop` (contenedorización + Fase 6 docs) en el merge `0022860`. Ya no aplica la rama `feature/fase-6-cierre` (fue descartada).
 
 ## 8. Decisiones y convenciones vigentes
 
