@@ -11,6 +11,7 @@ API REST de autenticación y autorización (usuarios + roles + JWT) en Python/Fa
 
 - Todo se ejecuta **desde la raíz del repo** (los imports son `app.*`), no desde `app/`.
 - Levantar API: `uvicorn app.main:app --reload`
+- Despliegue en contenedor: `docker build -t api-usuario-roles .` (Dockerfile + docker-entrypoint.sh en la raíz)
 - Migraciones (Alembic ya está inicializado, **no** hacer `alembic init`):
   - `alembic revision --autogenerate -m "descripcion"`
   - `alembic upgrade head`
@@ -39,13 +40,14 @@ Capas (regla: el dominio no importa frameworks, ni siquiera `bcrypt`/`PyJWT`):
 
 - `app/domain/` — entidades puras (`models/usuario.py`, `models/rol.py`), servicios (`services/validacion.py`, `normalizacion.py`, `auth_service.py`) y **ports** (contratos `ABC` + `abstractmethod`). `exceptions.py` define excepciones de dominio (`DatoInvalidoError`, `EmailDuplicadoError`, `CredencialesInvalidasError`, `NoAutorizadoError`, `TokenInvalidoError`, `UsuarioNoEncontradoError`, `RolNoEncontradoError`).
 - `app/application/use_cases/` — casos de uso `ucN_*.py` (clases `...UseCase` con `async def execute`), reciben ports, no implementaciones concretas.
-- `app/infrastructure/` — adapters: ORM + repositorios en `database/`, hashing/tokens en `auth/` (`password_hasher.py` con bcrypt, `jwt_token_provider.py` con PyJWT), y el wiring en `dependencies/` (`dependency_injection.py` + `auth_dependencies.py` con `get_current_user` y `require_roles`).
+- `app/infrastructure/` — adapters: ORM + repositorios en `database/`, hashing/tokens en `auth/` (`password_hasher.py` con bcrypt, `jwt_token_provider.py` con PyJWT), cache en `cache/` (`estado_usuario_cache_memoria.py` con cachetools, patrón híbrido JWT corto + cache TTL), y el wiring en `dependencies/` (`dependency_injection.py` + `auth_dependencies.py` con `get_current_user` y `require_roles`).
 - `app/presentation/` — routers FastAPI (`auth.py`, `usuarios.py`, `roles.py`), schemas Pydantic y `handlers.py` para traducir excepciones de dominio a HTTP (payload `{"error": str(exc)}`).
 
 Convenciones:
 
 - Todo caso de uso nuevo debe cablearse en `dependency_injection.py` (función `get_*` con `Depends(get_db)`) e inyectarse en el router con `Depends`.
-- Endpoints protegidos inyectan `get_current_user` (JWT). Autorización por rol: `Depends(require_roles("ADMIN"))`.
+- Endpoints protegidos inyectan `get_current_user` (JWT). Autorización por rol: `Depends(require_roles("ADMIN"))`. Para recurso del propio usuario o ADMIN: `Depends(require_mismo_usuario_o_admin)`.
+- **Patrón híbrido de autorización**: JWT corto (identidad) + cache de estado por `user_id` (activo + roles, TTL 60s). `get_current_user` resuelve el estado real desde el cache (BD en miss) y rechaza usuarios inactivos con 401. UC6/UC9/UC10 invalidan el cache → revocación en caliente sin re-login.
 - Excepciones de dominio se mapean a HTTP solo en `handlers.py`; no usar `try/except` de negocio en routers/use cases.
 - Tests unitarios usan `Fake*`/in-memory para aislar el dominio, sin BD.
 - Reglas SOLID aplicadas al escribir código Python: ver `.agents/rules/reglas-solid.md`.
@@ -128,25 +130,27 @@ Convenciones:
 
 | UC | Descripción | Estado | Notas |
 |---|---|---|---|
-| UC1 | Login con JWT | 🟡 parcial | Case de uso + endpoint `POST /auth/login` + `GET /auth/me` implementados; falta migración de esquema y prueba contra BD real |
-| UC2 | Registrar usuario | 🟡 parcial | Case de uso + endpoint implementados; sin migración / BD |
-| UC3 | Listar usuarios | 🟡 parcial | Implementado; protegido con JWT |
-| UC4 | Obtener usuario por ID | 🟡 parcial | Implementado; protegido con JWT |
-| UC5 | Actualizar usuario | 🟡 parcial | Implementado; protegido con JWT |
-| UC6 | Dar de baja usuario (baja lógica) | 🟡 parcial | Implementado; protegido con JWT |
-| UC7 | Crear rol | 🟡 parcial | Implementado; requiere rol ADMIN |
-| UC8 | Listar roles | 🟡 parcial | Implementado; requiere rol ADMIN |
-| UC9 | Asignar rol a usuario | 🟡 parcial | Implementado; protegido con JWT |
+| UC1 | Login con JWT | ✅ | `POST /auth/login` + `GET /auth/me`; verificado contra BD real |
+| UC2 | Registrar usuario | ✅ | Endpoint `POST /usuarios/`; hashea password, autoasigna rol USUARIO; verificado contra BD real |
+| UC3 | Listar usuarios | ✅ | `GET /usuarios/`; protegido con JWT + rol ADMIN |
+| UC4 | Obtener usuario por ID | ✅ | `GET /usuarios/{id}`; ADMIN o el propio usuario |
+| UC5 | Actualizar usuario | ✅ | `PATCH /usuarios/{id}`; ADMIN o el propio usuario |
+| UC6 | Dar de baja usuario (baja lógica) | ✅ | `DELETE /usuarios/{id}`; ADMIN; invalida cache de estado |
+| UC7 | Crear rol | ✅ | `POST /roles/`; requiere rol ADMIN |
+| UC8 | Listar roles | ✅ | `GET /roles/`; requiere rol ADMIN |
+| UC9 | Asignar rol a usuario | ✅ | `POST /usuarios/{id}/roles`; ADMIN; invalida cache |
+| UC10 | Quitar rol a usuario | ✅ | `DELETE /usuarios/{id}/roles/{rol_id}`; ADMIN; invalida cache |
 
 Leyenda: ✅ verificado en sesión | 🟡 parcial | 🔵 pendiente externo/no implementado | ⏳ en proceso
 
 ## Pendientes de implementación
 
-- Crear la migración inicial de Alembic (`alembic revision --autogenerate`) para las tablas `usuarios`, `roles` y `usuario_roles`.
-- Correr `alembic upgrade head` y el seed contra una BD PostgreSQL real.
-- Escribir tests de los UCs restantes (UC2..UC9) con fakes.
-- Revisar autorización por rol: hoy `/roles/*` exige `ADMIN`; decidir con el equipo qué roles aplican al resto de endpoints.
-- Decidir si `POST /usuarios/` debe ser público o exigir rol ADMIN (hoy es público para permitir el alta inicial).
+- ~~Crear la migración inicial de Alembic~~ ✅ aplicada (`9378f376749f` → tablas `usuarios`, `roles`, `usuario_roles`).
+- ~~Correr `alembic upgrade head` y el seed contra BD real~~ ✅ hecho (roles `ADMIN` y `USUARIO` presentes).
+- ~~Escribir tests de los UCs con fakes~~ ✅ 75 unitarios (UC1..UC10 + servicios de dominio).
+- ~~Revisar autorización por rol~~ ✅ matriz aplicada (listar/baja/asignar/quitar rol → ADMIN; obtener/actualizar → ADMIN o el propio usuario; registro público autoasigna USUARIO).
+- ~~Decidir si `POST /usuarios/` debe ser público o exigir ADMIN~~ ✅ quedó público (decisión del equipo, revisitable).
+- Futuro (no bloqueante): refresh token y cache Redis si se escala horizontalmente (el port `EstadoUsuarioCachePort` soporta el swap).
 
 ## Memoria del proyecto (docs/estado_actual_proyecto.md y docs/vitacora_agentica.md)
 
